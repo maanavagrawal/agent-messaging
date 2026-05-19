@@ -9,7 +9,8 @@
       "process"
     ]
   ],
-  "canonical_string": "TypeError|'NoneType' object is not subscriptable|handlers::process|handlers::process",
+  "canonical_string": "TypeError\u001f'NoneType' object is not subscriptable\u001fhandlers::process\u001fhandlers::process",
+  "hash": "98a06ec56cb0e13d",
   "error_kind": "traceback",
   "was_chained": false
 }

@@ -130,8 +130,8 @@ def normalize_python_error(raw: str) -> PythonErrorSignature:
     """Normalize raw Python-related error output into a deterministic signature.
 
     Dispatch order is canonical input, pytest, traceback, pip, generic. Parser
-    output is normalized by common helpers, converted to canonical_string, and
-    hashed with sha256(canonical_string)[:16].
+    output is normalized by common helpers, converted to the unit-separator
+    canonical_string, and hashed with sha256(canonical_string)[:16].
     """
 ```
 
@@ -175,7 +175,7 @@ def parse_canonical_signature(raw: str) -> ParsedError | None:
 
     Preserves the exact canonical string via canonical_string_override so
     normalizing canonical output is idempotent. Returns None when the input does
-    not match the pipe-separated canonical format.
+    not match the unit-separator canonical format.
     """
 
 
@@ -206,7 +206,7 @@ def parse_generic_error(raw: str) -> ParsedError:
 - `module_basename(path_or_module: str) -> str`: derive module basename without directory or `.py`.
 - `parse_traceback_frames(text: str) -> list[tuple[str, str]]`: extract traceback frame shape before truncation.
 - `truncate_traceback_shape(frames: list[tuple[str, str]], limit: int = 3) -> list[tuple[str, str]]`: keep the last execution frames.
-- `build_canonical_string(parsed: ParsedError) -> str`: produce `{type}|{message}|{module}::{function}|{shape}` with `<none>` placeholders.
+- `build_canonical_string(parsed: ParsedError) -> str`: produce `{type}\x1f{message}\x1f{module}::{function}\x1f{shape}` with `<none>` placeholders.
 - `signature_hash(canonical_string: str) -> str`: compute `sha256(canonical_string)[:16]`.
 - `normalize_common_text(text: str) -> str`: apply global normalization rules in the required order.
 

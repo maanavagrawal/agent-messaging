@@ -118,7 +118,7 @@ def test_build_canonical_string() -> None:
         last_frame_function="run",
         traceback_shape=[("app", "run")],
     )
-    assert build_canonical_string(parsed) == "ValueError|bad value|app::run|app::run"
+    assert build_canonical_string(parsed) == "ValueError\x1fbad value\x1fapp::run\x1fapp::run"
 
 
 def test_signature_hash_is_16_hex_chars() -> None:

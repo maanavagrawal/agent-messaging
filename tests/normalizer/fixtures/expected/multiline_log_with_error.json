@@ -4,7 +4,8 @@
   "last_frame_function": null,
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "GenericError|RuntimeError: worker failed for path output.json|<none>::<none>|<none>",
+  "canonical_string": "GenericError\u001fRuntimeError: worker failed for path output.json\u001f<none>::<none>\u001f<none>",
+  "hash": "8af48efa78ebffe9",
   "error_kind": "generic",
   "was_chained": false
 }

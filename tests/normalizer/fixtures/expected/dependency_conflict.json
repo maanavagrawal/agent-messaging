@@ -4,7 +4,8 @@
   "last_frame_function": null,
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "pip.DependencyConflict|Cannot install requests==2.28.0 and urllib3==2.0.0 because these package versions have conflicting dependencies.|<none>::<none>|<none>",
+  "canonical_string": "pip.DependencyConflict\u001fCannot install requests==2.28.0 and urllib3==2.0.0 because these package versions have conflicting dependencies.\u001f<none>::<none>\u001f<none>",
+  "hash": "d984429124ba1302",
   "error_kind": "pip",
   "was_chained": false
 }

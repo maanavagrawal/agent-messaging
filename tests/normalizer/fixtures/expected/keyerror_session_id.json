@@ -13,7 +13,8 @@
       "handle"
     ]
   ],
-  "canonical_string": "KeyError|<ID>|server::handle|server::__call__>server::handle",
+  "canonical_string": "KeyError\u001f<ID>\u001fserver::handle\u001fserver::__call__>server::handle",
+  "hash": "91201000d3745554",
   "error_kind": "traceback",
   "was_chained": false
 }

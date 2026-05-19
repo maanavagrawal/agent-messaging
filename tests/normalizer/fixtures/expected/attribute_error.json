@@ -9,7 +9,8 @@
       "run"
     ]
   ],
-  "canonical_string": "AttributeError|'NoneType' object has no attribute 'send'|worker::run|worker::run",
+  "canonical_string": "AttributeError\u001f'NoneType' object has no attribute 'send'\u001fworker::run\u001fworker::run",
+  "hash": "6ccdbf3e4231cdae",
   "error_kind": "traceback",
   "was_chained": false
 }

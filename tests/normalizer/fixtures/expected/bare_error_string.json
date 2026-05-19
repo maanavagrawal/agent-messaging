@@ -4,7 +4,8 @@
   "last_frame_function": null,
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "GenericError|Permission denied for request UserA123456789 at <TS>|<none>::<none>|<none>",
+  "canonical_string": "GenericError\u001fPermission denied for request UserA123456789 at <TS>\u001f<none>::<none>\u001f<none>",
+  "hash": "c3ddf2d2b774700d",
   "error_kind": "generic",
   "was_chained": false
 }

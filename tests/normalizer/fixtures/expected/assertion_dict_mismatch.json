@@ -9,7 +9,8 @@
       "test_create_user"
     ]
   ],
-  "canonical_string": "AssertionError|assert 'user_name' in {'username': 'alice'}|test_api::test_create_user|test_api::test_create_user",
+  "canonical_string": "AssertionError\u001fassert 'user_name' in {'username': 'alice'}\u001ftest_api::test_create_user\u001ftest_api::test_create_user",
+  "hash": "16f18ce2cb14b20c",
   "error_kind": "pytest",
   "was_chained": false
 }

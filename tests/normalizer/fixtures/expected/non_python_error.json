@@ -4,7 +4,8 @@
   "last_frame_function": null,
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "GenericError|fatal: not a git repository (or any of the parent directories): .git|<none>::<none>|<none>",
+  "canonical_string": "GenericError\u001ffatal: not a git repository (or any of the parent directories): .git\u001f<none>::<none>\u001f<none>",
+  "hash": "7a9dbd2153c39ba7",
   "error_kind": "generic",
   "was_chained": false
 }

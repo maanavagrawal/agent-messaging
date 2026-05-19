@@ -17,7 +17,8 @@
       "get"
     ]
   ],
-  "canonical_string": "orders.models.Order.DoesNotExist|Order matching query does not exist.|query::get|views::get_order>manager::manager_method>query::get",
+  "canonical_string": "orders.models.Order.DoesNotExist\u001fOrder matching query does not exist.\u001fquery::get\u001fviews::get_order>manager::manager_method>query::get",
+  "hash": "170eca57af638667",
   "error_kind": "traceback",
   "was_chained": false
 }

@@ -17,7 +17,8 @@
       "func_100"
     ]
   ],
-  "canonical_string": "ValueError|deep failure|frame_100::func_100|frame_098::func_098>frame_099::func_099>frame_100::func_100",
+  "canonical_string": "ValueError\u001fdeep failure\u001fframe_100::func_100\u001fframe_098::func_098>frame_099::func_099>frame_100::func_100",
+  "hash": "2409e17acd471200",
   "error_kind": "traceback",
   "was_chained": false
 }

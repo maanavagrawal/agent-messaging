@@ -4,7 +4,8 @@
   "last_frame_function": null,
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "GenericError|{\"error\":\"invalid_request\",\"request_id\":\"<UUID>\",\"created_at\":\"<TS>\",\"path\":\"app.py\"}|<none>::<none>|<none>",
+  "canonical_string": "GenericError\u001f{\"error\":\"invalid_request\",\"request_id\":\"<UUID>\",\"created_at\":\"<TS>\",\"path\":\"app.py\"}\u001f<none>::<none>\u001f<none>",
+  "hash": "99b3d972a9358620",
   "error_kind": "generic",
   "was_chained": false
 }

@@ -9,7 +9,8 @@
       "test_add"
     ]
   ],
-  "canonical_string": "ValueError|invalid literal for int() with base 10: <ID>|test_math::test_add|test_math::test_add",
+  "canonical_string": "ValueError\u001finvalid literal for int() with base 10: <ID>\u001ftest_math::test_add\u001ftest_math::test_add",
+  "hash": "5f2d16d6484ff2c1",
   "error_kind": "pytest",
   "was_chained": false
 }

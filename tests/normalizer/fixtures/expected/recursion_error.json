@@ -17,7 +17,8 @@
       "visit"
     ]
   ],
-  "canonical_string": "RecursionError|maximum recursion depth exceeded|tree::visit|tree::visit>tree::visit>tree::visit",
+  "canonical_string": "RecursionError\u001fmaximum recursion depth exceeded\u001ftree::visit\u001ftree::visit>tree::visit>tree::visit",
+  "hash": "360e7146dc4884c2",
   "error_kind": "traceback",
   "was_chained": false
 }

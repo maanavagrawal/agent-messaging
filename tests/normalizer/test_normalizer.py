@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from pathlib import Path
 
@@ -21,11 +20,9 @@ def fixture_paths() -> list[Path]:
 def test_python_normalizer_matches_fixture(fixture_path: Path) -> None:
     result = normalize_python_error(fixture_path.read_text())
     actual = result.model_dump(mode="json")
-    actual_hash = actual.pop("hash")
     expected = json.loads((EXPECTED_ROOT / f"{fixture_path.stem}.json").read_text())
 
     assert actual == expected
-    assert actual_hash == hashlib.sha256(result.canonical_string.encode("utf-8")).hexdigest()[:16]
 
 
 def test_deep_traceback_truncates_to_last_three_frames() -> None:

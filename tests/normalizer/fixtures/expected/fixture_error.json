@@ -4,7 +4,8 @@
   "last_frame_function": "test_requires_client",
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "RuntimeError|ClientABC123456789 unavailable|<none>::test_requires_client|<none>",
+  "canonical_string": "RuntimeError\u001fClientABC123456789 unavailable\u001f<none>::test_requires_client\u001f<none>",
+  "hash": "3e9d84a8370a7a83",
   "error_kind": "pytest",
   "was_chained": false
 }

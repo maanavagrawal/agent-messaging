@@ -4,7 +4,8 @@
   "last_frame_function": null,
   "last_frame_module": null,
   "traceback_shape": [],
-  "canonical_string": "pip.VersionNotFound|Could not find a version that satisfies the requirement django==99.0|<none>::<none>|<none>",
+  "canonical_string": "pip.VersionNotFound\u001fCould not find a version that satisfies the requirement django==99.0\u001f<none>::<none>\u001f<none>",
+  "hash": "44bce02b57b4525e",
   "error_kind": "pip",
   "was_chained": false
 }

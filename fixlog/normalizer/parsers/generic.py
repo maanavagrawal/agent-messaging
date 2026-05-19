@@ -2,11 +2,8 @@ from __future__ import annotations
 
 import re
 
+from fixlog.normalizer.common import CANONICAL_SEPARATOR
 from fixlog.normalizer.models import ErrorKind, ParsedError
-
-# Matches the exact four-field canonical string shape. It intentionally requires
-# three pipe separators, which means messages containing pipes fall through.
-CANONICAL_SIGNATURE_RE = re.compile(r"^([^|]+)\|([^|]*)\|([^|]+)\|([^|]+)$")
 
 # Matches module::function frame tokens in canonical shape text. It intentionally
 # ignores malformed frame tokens rather than guessing.
@@ -43,20 +40,21 @@ def parse_canonical_signature(raw: str) -> ParsedError | None:
 
     Preserves the exact canonical string via canonical_string_override so
     normalizing canonical output is idempotent. Returns None when the input does
-    not match the pipe-separated canonical format.
+    not match the unit-separator canonical format.
     """
     stripped = raw.strip()
-    match = CANONICAL_SIGNATURE_RE.match(stripped)
-    if match is None:
+    parts = stripped.split(CANONICAL_SEPARATOR)
+    if len(parts) != 4:
         return None
-    module, function = _parse_location(match.group(3))
+    exception_type, exception_message, location, shape_text = parts
+    module, function = _parse_location(location)
     return ParsedError(
-        exception_type=match.group(1),
-        exception_message=match.group(2),
+        exception_type=exception_type,
+        exception_message=exception_message,
         error_kind=ErrorKind.GENERIC,
         last_frame_module=module,
         last_frame_function=function,
-        traceback_shape=_parse_shape(match.group(4)),
+        traceback_shape=_parse_shape(shape_text),
         canonical_string_override=stripped,
     )
 

@@ -13,7 +13,8 @@
       "get_user"
     ]
   ],
-  "canonical_string": "psycopg2.errors.UndefinedColumn|column \"user_name\" does not exist LINE 1: SELECT user_name FROM users WHERE id = <N>|db::get_user|app::handle_request>db::get_user",
+  "canonical_string": "psycopg2.errors.UndefinedColumn\u001fcolumn \"user_name\" does not exist LINE 1: SELECT user_name FROM users WHERE id = <N>\u001fdb::get_user\u001fapp::handle_request>db::get_user",
+  "hash": "25ae77fe837e0670",
   "error_kind": "traceback",
   "was_chained": false
 }

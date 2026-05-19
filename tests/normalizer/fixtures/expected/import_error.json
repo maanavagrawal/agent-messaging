@@ -9,7 +9,8 @@
       "<module>"
     ]
   ],
-  "canonical_string": "ImportError|cannot import name 'settings' from 'myapp.config' (config.py)|manage::<module>|manage::<module>",
+  "canonical_string": "ImportError\u001fcannot import name 'settings' from 'myapp.config' (config.py)\u001fmanage::<module>\u001fmanage::<module>",
+  "hash": "70be757971b24959",
   "error_kind": "traceback",
   "was_chained": false
 }

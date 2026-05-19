@@ -6,6 +6,8 @@ from pathlib import PurePosixPath
 
 from fixlog.normalizer.models import ParsedError
 
+CANONICAL_SEPARATOR = "\x1f"
+
 # Matches ANSI CSI terminal color/control sequences. It intentionally does not
 # remove arbitrary ESC text outside the standard CSI/control forms.
 ANSI_RE = re.compile(r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\][^\x07]*(?:\x07|\x1b\\))")
@@ -207,21 +209,33 @@ def truncate_traceback_shape(
     return frames[-limit:]
 
 
+def _canonical_field(value: str | None) -> str:
+    if value is None or value == "":
+        return "<none>"
+    return value.replace(CANONICAL_SEPARATOR, "")
+
+
 def _shape_to_text(shape: list[tuple[str, str]]) -> str:
     if not shape:
         return "<none>"
-    return ">".join(f"{module}::{function}" for module, function in shape)
+    return ">".join(
+        f"{_canonical_field(module)}::{_canonical_field(function)}"
+        for module, function in shape
+    )
 
 
 def build_canonical_string(parsed: ParsedError) -> str:
     if parsed.canonical_string_override is not None:
         return parsed.canonical_string_override
-    module = parsed.last_frame_module or "<none>"
-    function = parsed.last_frame_function or "<none>"
-    return (
-        f"{parsed.exception_type}|{parsed.exception_message}|"
-        f"{module}::{function}|{_shape_to_text(parsed.traceback_shape)}"
-    )
+    module = _canonical_field(parsed.last_frame_module)
+    function = _canonical_field(parsed.last_frame_function)
+    fields = [
+        _canonical_field(parsed.exception_type),
+        _canonical_field(parsed.exception_message),
+        f"{module}::{function}",
+        _shape_to_text(parsed.traceback_shape),
+    ]
+    return CANONICAL_SEPARATOR.join(fields)
 
 
 def signature_hash(canonical_string: str) -> str:

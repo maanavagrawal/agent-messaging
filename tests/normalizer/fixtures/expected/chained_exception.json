@@ -13,7 +13,8 @@
       "read_config"
     ]
   ],
-  "canonical_string": "RuntimeError|ConfigLoadA123456 failed|load::read_config|app::boot>load::read_config",
+  "canonical_string": "RuntimeError\u001fConfigLoadA123456 failed\u001fload::read_config\u001fapp::boot>load::read_config",
+  "hash": "728f20e9dc5c60d5",
   "error_kind": "traceback",
   "was_chained": true
 }

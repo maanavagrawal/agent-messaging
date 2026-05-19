@@ -33,8 +33,8 @@ def normalize_python_error(raw: str) -> PythonErrorSignature:
     """Normalize raw Python-related error output into a deterministic signature.
 
     Dispatch order is canonical input, pytest, traceback, pip, generic. Parser
-    output is normalized by common helpers, converted to canonical_string, and
-    hashed with sha256(canonical_string)[:16].
+    output is normalized by common helpers, converted to the unit-separator
+    canonical string format, and hashed with sha256(canonical_string)[:16].
     """
     dispatch_input = strip_ansi_codes(raw)
     parsed = (

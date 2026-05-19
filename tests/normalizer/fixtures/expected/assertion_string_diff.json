@@ -9,7 +9,8 @@
       "test_title"
     ]
   ],
-  "canonical_string": "AssertionError|assert 'Hello Alice' == 'Hello Bob'|test_render::test_title|test_render::test_title",
+  "canonical_string": "AssertionError\u001fassert 'Hello Alice' == 'Hello Bob'\u001ftest_render::test_title\u001ftest_render::test_title",
+  "hash": "12c0e24d53c5ff4f",
   "error_kind": "pytest",
   "was_chained": false
 }

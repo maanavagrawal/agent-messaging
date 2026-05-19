@@ -9,7 +9,8 @@
       "__init__"
     ]
   ],
-  "canonical_string": "ValueError|invalid literal for int() with base 10: <ID>|models::__init__|models::__init__",
+  "canonical_string": "ValueError\u001finvalid literal for int() with base 10: <ID>\u001fmodels::__init__\u001fmodels::__init__",
+  "hash": "2e6b62d241cf9556",
   "error_kind": "traceback",
   "was_chained": false
 }
