@@ -1,0 +1,10 @@
+{
+  "exception_type": "GenericError",
+  "exception_message": "fatal: not a git repository (or any of the parent directories): .git",
+  "last_frame_function": null,
+  "last_frame_module": null,
+  "traceback_shape": [],
+  "canonical_string": "GenericError|fatal: not a git repository (or any of the parent directories): .git|<none>::<none>|<none>",
+  "error_kind": "generic",
+  "was_chained": false
+}

@@ -1,0 +1,10 @@
+{
+  "exception_type": "RuntimeError",
+  "exception_message": "ClientABC123456789 unavailable",
+  "last_frame_function": "test_requires_client",
+  "last_frame_module": null,
+  "traceback_shape": [],
+  "canonical_string": "RuntimeError|ClientABC123456789 unavailable|<none>::test_requires_client|<none>",
+  "error_kind": "pytest",
+  "was_chained": false
+}

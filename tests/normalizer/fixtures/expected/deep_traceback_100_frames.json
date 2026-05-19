@@ -1,0 +1,23 @@
+{
+  "exception_type": "ValueError",
+  "exception_message": "deep failure",
+  "last_frame_function": "func_100",
+  "last_frame_module": "frame_100",
+  "traceback_shape": [
+    [
+      "frame_098",
+      "func_098"
+    ],
+    [
+      "frame_099",
+      "func_099"
+    ],
+    [
+      "frame_100",
+      "func_100"
+    ]
+  ],
+  "canonical_string": "ValueError|deep failure|frame_100::func_100|frame_098::func_098>frame_099::func_099>frame_100::func_100",
+  "error_kind": "traceback",
+  "was_chained": false
+}

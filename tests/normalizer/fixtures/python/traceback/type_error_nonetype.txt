@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/sam/service/handlers.py", line 51, in process
+    return payload["user"]["name"]
+TypeError: 'NoneType' object is not subscriptable

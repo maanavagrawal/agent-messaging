@@ -1,0 +1,10 @@
+{
+  "exception_type": "GenericError",
+  "exception_message": "RuntimeError: worker failed for path output.json",
+  "last_frame_function": null,
+  "last_frame_module": null,
+  "traceback_shape": [],
+  "canonical_string": "GenericError|RuntimeError: worker failed for path output.json|<none>::<none>|<none>",
+  "error_kind": "generic",
+  "was_chained": false
+}

@@ -1,0 +1,1 @@
+FAILED tests/test_math.py::test_add[case0] - ValueError: invalid literal for int() with base 10: 'CaseABC123456789'

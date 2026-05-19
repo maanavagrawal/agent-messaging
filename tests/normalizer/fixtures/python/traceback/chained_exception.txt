@@ -1,0 +1,15 @@
+Traceback (most recent call last):
+  File "/Users/rita/proj/load.py", line 14, in read_config
+    return json.loads(raw)
+  File "/Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/rita/proj/app.py", line 33, in boot
+    config = read_config()
+  File "/Users/rita/proj/load.py", line 16, in read_config
+    raise RuntimeError("ConfigLoadA123456 failed") from exc
+RuntimeError: ConfigLoadA123456 failed

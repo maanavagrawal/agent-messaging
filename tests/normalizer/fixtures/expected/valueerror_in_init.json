@@ -1,0 +1,15 @@
+{
+  "exception_type": "ValueError",
+  "exception_message": "invalid literal for int() with base 10: <ID>",
+  "last_frame_function": "__init__",
+  "last_frame_module": "models",
+  "traceback_shape": [
+    [
+      "models",
+      "__init__"
+    ]
+  ],
+  "canonical_string": "ValueError|invalid literal for int() with base 10: <ID>|models::__init__|models::__init__",
+  "error_kind": "traceback",
+  "was_chained": false
+}

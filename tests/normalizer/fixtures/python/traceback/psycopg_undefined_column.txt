@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/danny/proj/app.py", line 42, in handle_request
+    user = db.get_user(user_id)
+  File "/home/danny/proj/db.py", line 18, in get_user
+    return self._conn.execute(query, (user_id,)).fetchone()
+psycopg2.errors.UndefinedColumn: column "user_name" does not exist
+LINE 1: SELECT user_name FROM users WHERE id = 42
+               ^

@@ -1,0 +1,10 @@
+________________ ERROR at setup of test_requires_client _________________
+
+request = <SubRequest 'client' for <Function test_requires_client>>
+
+    @pytest.fixture
+    def client():
+>       raise RuntimeError("ClientABC123456789 unavailable")
+E       RuntimeError: ClientABC123456789 unavailable
+
+tests/conftest.py:12: RuntimeError

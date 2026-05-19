@@ -1,0 +1,15 @@
+{
+  "exception_type": "ValueError",
+  "exception_message": "invalid literal for int() with base 10: <ID>",
+  "last_frame_function": "test_add",
+  "last_frame_module": "test_math",
+  "traceback_shape": [
+    [
+      "test_math",
+      "test_add"
+    ]
+  ],
+  "canonical_string": "ValueError|invalid literal for int() with base 10: <ID>|test_math::test_add|test_math::test_add",
+  "error_kind": "pytest",
+  "was_chained": false
+}

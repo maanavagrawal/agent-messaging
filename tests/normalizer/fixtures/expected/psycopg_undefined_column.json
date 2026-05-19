@@ -1,0 +1,19 @@
+{
+  "exception_type": "psycopg2.errors.UndefinedColumn",
+  "exception_message": "column \"user_name\" does not exist LINE 1: SELECT user_name FROM users WHERE id = <N>",
+  "last_frame_function": "get_user",
+  "last_frame_module": "db",
+  "traceback_shape": [
+    [
+      "app",
+      "handle_request"
+    ],
+    [
+      "db",
+      "get_user"
+    ]
+  ],
+  "canonical_string": "psycopg2.errors.UndefinedColumn|column \"user_name\" does not exist LINE 1: SELECT user_name FROM users WHERE id = <N>|db::get_user|app::handle_request>db::get_user",
+  "error_kind": "traceback",
+  "was_chained": false
+}

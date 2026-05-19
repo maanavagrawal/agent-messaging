@@ -1,0 +1,19 @@
+{
+  "exception_type": "KeyError",
+  "exception_message": "<ID>",
+  "last_frame_function": "handle",
+  "last_frame_module": "server",
+  "traceback_shape": [
+    [
+      "server",
+      "__call__"
+    ],
+    [
+      "server",
+      "handle"
+    ]
+  ],
+  "canonical_string": "KeyError|<ID>|server::handle|server::__call__>server::handle",
+  "error_kind": "traceback",
+  "was_chained": false
+}

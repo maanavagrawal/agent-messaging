@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/Users/ivy/proj/manage.py", line 7, in <module>
+    from myapp.config import settings
+ImportError: cannot import name 'settings' from 'myapp.config' (/Users/ivy/proj/myapp/config.py)

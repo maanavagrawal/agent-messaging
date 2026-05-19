@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/home/maya/app/server.py", line 105, in __call__
+    return self.handle(scope)
+  File "/home/maya/app/server.py", line 88, in handle
+    session = scope["SessionABC123456789"]
+KeyError: 'SessionABC123456789'

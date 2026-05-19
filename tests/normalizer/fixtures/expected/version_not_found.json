@@ -1,0 +1,10 @@
+{
+  "exception_type": "pip.VersionNotFound",
+  "exception_message": "Could not find a version that satisfies the requirement django==99.0",
+  "last_frame_function": null,
+  "last_frame_module": null,
+  "traceback_shape": [],
+  "canonical_string": "pip.VersionNotFound|Could not find a version that satisfies the requirement django==99.0|<none>::<none>|<none>",
+  "error_kind": "pip",
+  "was_chained": false
+}

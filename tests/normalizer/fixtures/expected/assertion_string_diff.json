@@ -1,0 +1,15 @@
+{
+  "exception_type": "AssertionError",
+  "exception_message": "assert 'Hello Alice' == 'Hello Bob'",
+  "last_frame_function": "test_title",
+  "last_frame_module": "test_render",
+  "traceback_shape": [
+    [
+      "test_render",
+      "test_title"
+    ]
+  ],
+  "canonical_string": "AssertionError|assert 'Hello Alice' == 'Hello Bob'|test_render::test_title|test_render::test_title",
+  "error_kind": "pytest",
+  "was_chained": false
+}

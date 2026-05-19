@@ -1,0 +1,3 @@
+2026/05/19 04:13:54 worker starting job 550e8400-e29b-41d4-a716-446655440000
+RuntimeError: worker failed for path /Users/alice/jobs/output.json
+retrying in 5 seconds

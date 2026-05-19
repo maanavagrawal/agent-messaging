@@ -1,0 +1,15 @@
+{
+  "exception_type": "ImportError",
+  "exception_message": "cannot import name 'settings' from 'myapp.config' (config.py)",
+  "last_frame_function": "<module>",
+  "last_frame_module": "manage",
+  "traceback_shape": [
+    [
+      "manage",
+      "<module>"
+    ]
+  ],
+  "canonical_string": "ImportError|cannot import name 'settings' from 'myapp.config' (config.py)|manage::<module>|manage::<module>",
+  "error_kind": "traceback",
+  "was_chained": false
+}

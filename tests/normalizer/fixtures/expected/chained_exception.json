@@ -1,0 +1,19 @@
+{
+  "exception_type": "RuntimeError",
+  "exception_message": "ConfigLoadA123456 failed",
+  "last_frame_function": "read_config",
+  "last_frame_module": "load",
+  "traceback_shape": [
+    [
+      "app",
+      "boot"
+    ],
+    [
+      "load",
+      "read_config"
+    ]
+  ],
+  "canonical_string": "RuntimeError|ConfigLoadA123456 failed|load::read_config|app::boot>load::read_config",
+  "error_kind": "traceback",
+  "was_chained": true
+}

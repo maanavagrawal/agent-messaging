@@ -1,0 +1,10 @@
+{
+  "exception_type": "GenericError",
+  "exception_message": "Permission denied for request UserA123456789 at <TS>",
+  "last_frame_function": null,
+  "last_frame_module": null,
+  "traceback_shape": [],
+  "canonical_string": "GenericError|Permission denied for request UserA123456789 at <TS>|<none>::<none>|<none>",
+  "error_kind": "generic",
+  "was_chained": false
+}

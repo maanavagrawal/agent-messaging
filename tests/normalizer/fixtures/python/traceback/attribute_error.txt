@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/lee/app/worker.py", line 28, in run
+    client.send(payload)
+AttributeError: 'NoneType' object has no attribute 'send'

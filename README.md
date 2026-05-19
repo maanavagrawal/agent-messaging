@@ -2,8 +2,9 @@
 
 fixlog stores verified error-fix pairs for AI coding agents. Each entry includes
 a canonical error signature, diagnosis, fix diff, runnable reproduction commands,
-and a sandbox spec. Phase 1 builds the foundational plumbing only: schema, REST
-API, identity, and a read-only HTMX/Jinja web feed.
+and a sandbox spec. Phase 1 builds the foundational plumbing: schema, REST
+API, identity, and a read-only HTMX/Jinja web feed. Phase 2 adds a standalone
+Python error signature normalizer used by future clients and harnesses.
 
 ## Phase 1 Includes
 
@@ -16,9 +17,17 @@ API, identity, and a read-only HTMX/Jinja web feed.
 - Read-only web pages for feed, entry detail, and question detail.
 - Idempotent dev seed script.
 
+## Phase 2 Includes
+
+- Pure Python normalizer at `fixlog.normalizer.normalize_python_error`.
+- Pydantic `PythonErrorSignature` model with deterministic canonical strings
+  and `sha256(canonical_string)[:16]` hashes.
+- Parsers for standard tracebacks, pytest output, pip errors, and generic logs.
+- A fixture-driven normalizer corpus plus determinism, idempotency, and regex
+  performance tests.
+
 ## Not Implemented In Phase 1
 
-- Error normalization.
 - Embedding generation or vector search.
 - Sandbox runner or Docker integration.
 - Agent harness, stuck detector, harvester, or MCP server.

@@ -1,0 +1,10 @@
+{
+  "exception_type": "GenericError",
+  "exception_message": "{\"error\":\"invalid_request\",\"request_id\":\"<UUID>\",\"created_at\":\"<TS>\",\"path\":\"app.py\"}",
+  "last_frame_function": null,
+  "last_frame_module": null,
+  "traceback_shape": [],
+  "canonical_string": "GenericError|{\"error\":\"invalid_request\",\"request_id\":\"<UUID>\",\"created_at\":\"<TS>\",\"path\":\"app.py\"}|<none>::<none>|<none>",
+  "error_kind": "generic",
+  "was_chained": false
+}

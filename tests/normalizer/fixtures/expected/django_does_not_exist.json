@@ -1,0 +1,23 @@
+{
+  "exception_type": "orders.models.Order.DoesNotExist",
+  "exception_message": "Order matching query does not exist.",
+  "last_frame_function": "get",
+  "last_frame_module": "query",
+  "traceback_shape": [
+    [
+      "views",
+      "get_order"
+    ],
+    [
+      "manager",
+      "manager_method"
+    ],
+    [
+      "query",
+      "get"
+    ]
+  ],
+  "canonical_string": "orders.models.Order.DoesNotExist|Order matching query does not exist.|query::get|views::get_order>manager::manager_method>query::get",
+  "error_kind": "traceback",
+  "was_chained": false
+}

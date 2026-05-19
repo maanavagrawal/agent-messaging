@@ -1,0 +1,15 @@
+{
+  "exception_type": "AssertionError",
+  "exception_message": "assert 'user_name' in {'username': 'alice'}",
+  "last_frame_function": "test_create_user",
+  "last_frame_module": "test_api",
+  "traceback_shape": [
+    [
+      "test_api",
+      "test_create_user"
+    ]
+  ],
+  "canonical_string": "AssertionError|assert 'user_name' in {'username': 'alice'}|test_api::test_create_user|test_api::test_create_user",
+  "error_kind": "pytest",
+  "was_chained": false
+}

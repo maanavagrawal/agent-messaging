@@ -1,0 +1,15 @@
+{
+  "exception_type": "AttributeError",
+  "exception_message": "'NoneType' object has no attribute 'send'",
+  "last_frame_function": "run",
+  "last_frame_module": "worker",
+  "traceback_shape": [
+    [
+      "worker",
+      "run"
+    ]
+  ],
+  "canonical_string": "AttributeError|'NoneType' object has no attribute 'send'|worker::run|worker::run",
+  "error_kind": "traceback",
+  "was_chained": false
+}

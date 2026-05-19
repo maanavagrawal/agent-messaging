@@ -1,0 +1,15 @@
+{
+  "exception_type": "TypeError",
+  "exception_message": "'NoneType' object is not subscriptable",
+  "last_frame_function": "process",
+  "last_frame_module": "handlers",
+  "traceback_shape": [
+    [
+      "handlers",
+      "process"
+    ]
+  ],
+  "canonical_string": "TypeError|'NoneType' object is not subscriptable|handlers::process|handlers::process",
+  "error_kind": "traceback",
+  "was_chained": false
+}

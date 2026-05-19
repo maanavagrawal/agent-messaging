@@ -1,0 +1,23 @@
+{
+  "exception_type": "RecursionError",
+  "exception_message": "maximum recursion depth exceeded",
+  "last_frame_function": "visit",
+  "last_frame_module": "tree",
+  "traceback_shape": [
+    [
+      "tree",
+      "visit"
+    ],
+    [
+      "tree",
+      "visit"
+    ],
+    [
+      "tree",
+      "visit"
+    ]
+  ],
+  "canonical_string": "RecursionError|maximum recursion depth exceeded|tree::visit|tree::visit>tree::visit>tree::visit",
+  "error_kind": "traceback",
+  "was_chained": false
+}

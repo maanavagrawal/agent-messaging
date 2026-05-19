@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/Users/noah/proj/tree.py", line 10, in visit
+    return visit(node.parent)
+  File "/Users/noah/proj/tree.py", line 10, in visit
+    return visit(node.parent)
+  File "/Users/noah/proj/tree.py", line 10, in visit
+    return visit(node.parent)
+  [Previous line repeated 996 more times]
+RecursionError: maximum recursion depth exceeded

@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/Users/pat/proj/models.py", line 5, in __init__
+    self.count = int(raw_count)
+ValueError: invalid literal for int() with base 10: 'abc123XYZ999'
