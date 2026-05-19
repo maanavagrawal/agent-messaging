@@ -132,3 +132,46 @@
   - `.venv/bin/alembic upgrade head` applied `0001` and `0002` against `/tmp/fixlog-phase25-alembic.sqlite3`.
   - `.venv/bin/pytest -q` with 106 passing tests.
   - `scripts/dev_seed.py` ran twice against `/tmp/fixlog-phase25-seed.sqlite3`; counts stayed idempotent and `session_events` stayed at 0.
+
+# fixlog Phase 3 Todo
+
+## Eng Review Decisions
+- [x] Reuse the existing `SessionEvent` table instead of creating a parallel event store.
+- [x] Add `source_tool` and `source_tool_session_id` to `Session` so Claude Code native sessions map cleanly to fixlog sessions.
+- [x] Keep raw session event reads token-gated; only the aggregate active-sessions web page is read-open.
+- [x] Treat `SessionEvent.kind` as a future-extensible string in the ORM, while keeping named constants for known Phase 3 kinds.
+- [x] Implement sensitive-file redaction with parser state plus testable redaction helpers because tool results only link to prior tool calls by id.
+- [x] Implement the real Claude Code smoke test as `FIXLOG_E2E=1` gated; this environment cannot start a real user Claude Code session deterministically.
+
+## NOT in Scope
+- Codex, Cursor, Aider, Continue, or other parser implementations.
+- Auto-querying fixlog when stuck, pulling fixes, or applying entries.
+- Sandbox auto-verification.
+- Multi-language error detection beyond Python traceback/pytest hashing.
+- Auto-submitting harvested entries unless `FIXLOG_AUTO_SUBMIT_HARVESTS=true`.
+
+## Implementation Sequence
+- [x] Harness models.
+- [x] Secret redaction helpers and tests.
+- [x] Parser ABC.
+- [x] Claude Code parser fixtures and tests.
+- [x] Stuck detector and tests.
+- [x] Harvester with mocked LLM tests.
+- [x] Prompt modules.
+- [x] Watcher/replay pipeline.
+- [x] CLI commands.
+- [x] Server SessionEvent API additions.
+- [x] Active sessions web page.
+- [x] End-to-end replay integration test.
+- [x] Gated real Claude Code smoke test.
+- [x] Full pytest verification.
+
+## Phase 3 Review Notes
+- The live Claude Code smoke test is implemented as a gated test because it needs a real local Claude Code session log path.
+- Raw event payload reads are token-gated even though existing entries/questions remain read-open.
+- `watchdog` and `anthropic` are pinned dependencies, but imports are lazy where possible so unit tests stay local and deterministic.
+- Verification completed:
+  - `.venv/bin/pytest -q` with 134 passed and 1 gated live smoke skipped.
+  - `.venv/bin/alembic upgrade head` against `/tmp/fixlog-phase3-alembic.sqlite3`.
+  - `.venv/bin/python -m compileall fixlog fixlog_harness scripts tests`.
+  - `scripts/dev_seed.py` ran twice against `/tmp/fixlog-phase3-seed.sqlite3`.

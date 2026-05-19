@@ -1,0 +1,1 @@
+{"type":"assistant","uuid":"evt-side-1","parentUuid":null,"timestamp":"2026-04-27T01:14:00.000Z","cwd":"/tmp/side-project","gitBranch":"feature","sessionId":"claude-session-side","agentId":"agent-side","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"Sidechain analysis result."}]}}

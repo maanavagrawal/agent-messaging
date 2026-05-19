@@ -4,7 +4,8 @@ fixlog stores verified error-fix pairs for AI coding agents. Each entry includes
 a canonical error signature, diagnosis, fix diff, runnable reproduction commands,
 and a sandbox spec. Phase 1 builds the foundational plumbing: schema, REST
 API, identity, and a read-only HTMX/Jinja web feed. Phase 2 adds a standalone
-Python error signature normalizer used by future clients and harnesses.
+Python error signature normalizer. Phase 3 adds a Claude Code log-watcher
+harness that replays or tails session logs into redacted SessionEvents.
 
 ## Phase 1 Includes
 
@@ -29,15 +30,27 @@ Python error signature normalizer used by future clients and harnesses.
 - POST `/entries`, POST `/questions`, and GET `/search` normalize raw Python
   error text server-side.
 
-## Not Implemented In Phase 1
+## Phase 3 Includes
+
+- `fixlog_harness` package with normalized event models, parser ABC, and a
+  Claude Code JSONL parser.
+- Mandatory redaction before parsed events leave the parser.
+- Replay/watch pipeline that maps Claude sessions to fixlog sessions and posts
+  redacted events to `POST /sessions/{session_id}/events`.
+- Stuck detection for repeated errors and thrashing.
+- Harvest extraction that writes pending candidate entries for manual review.
+- `fixlog replay`, `fixlog watch`, and `fixlog harvest ...` CLI commands.
+- Active sessions page at `/sessions/active`.
+
+## Not Implemented
 
 - Embedding generation or vector search.
 - Sandbox runner or Docker integration.
-- Agent harness, stuck detector, harvester, or MCP server.
-- CLI binary.
+- Codex/Cursor/Aider/Continue parsers.
+- Auto-querying, pulling, applying, or sandbox-verifying fixes.
+- MCP server.
 - Confidence scoring, reputation enforcement, rate limiting.
 - Public signup or multi-user auth beyond shared bearer tokens.
-- Any code path that writes to `SessionEvent`; the table exists only for future compatibility.
 
 ## Setup
 
@@ -59,6 +72,16 @@ Required environment variables:
 - `FIXLOG_ACCOUNT_1_NAME`
 - `FIXLOG_ACCOUNT_2_TOKEN`
 - `FIXLOG_ACCOUNT_2_NAME`
+
+Harness environment variables:
+
+- `FIXLOG_BASE_URL`
+- `FIXLOG_API_TOKEN`
+- `FIXLOG_CLAUDE_PROJECTS_DIR`
+- `FIXLOG_SESSION_MAP_PATH`
+- `FIXLOG_PENDING_HARVEST_DIR`
+- `ANTHROPIC_API_KEY` for harvest prompt generation
+- `FIXLOG_AUTO_SUBMIT_HARVESTS`, default `false`
 
 ## Database
 
@@ -117,6 +140,30 @@ pytest
 
 The tests use isolated temporary SQLite databases and FastAPI dependency
 overrides, so they do not touch your local `fixlog.sqlite3`.
+
+## Harness
+
+Replay a Claude Code session log:
+
+```bash
+fixlog replay ~/.claude/projects/<project-slug>/<session-uuid>.jsonl
+```
+
+Watch recently modified Claude Code logs:
+
+```bash
+fixlog watch
+```
+
+Review pending harvests:
+
+```bash
+fixlog harvest review
+fixlog harvest submit <id>
+fixlog harvest discard <id>
+```
+
+Auto-submit is off by default. Keep it off until sandbox verification exists.
 
 ## API Notes
 

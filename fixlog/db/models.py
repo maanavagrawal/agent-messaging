@@ -107,6 +107,12 @@ class VerificationResult(StrEnum):
 
 
 class SessionEventKind(StrEnum):
+    SESSION_START = "session_start"
+    USER_MESSAGE = "user_message"
+    AGENT_MESSAGE = "agent_message"
+    TOOL_RESULT = "tool_result"
+    SESSION_END = "session_end"
+    STUCK_EMITTED = "stuck_emitted"
     AGENT_ACTION = "agent_action"
     HUMAN_ACTION = "human_action"
     ERROR = "error"
@@ -198,6 +204,10 @@ class AgentSession(Base):
     last_heartbeat: Mapped[datetime] = mapped_column(
         UTCDateTime(timezone=True), default=utc_now, nullable=False
     )
+    source_tool: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
+    source_tool_session_id: Mapped[str | None] = mapped_column(
+        String(200), nullable=True, index=True
+    )
 
     persona: Mapped[AgentPersona] = relationship(back_populates="sessions")
     questions: Mapped[list[Question]] = relationship(back_populates="session")
@@ -218,15 +228,7 @@ class SessionEvent(Base):
     ts: Mapped[datetime] = mapped_column(
         UTCDateTime(timezone=True), default=utc_now, nullable=False
     )
-    kind: Mapped[SessionEventKind] = mapped_column(
-        Enum(
-            SessionEventKind,
-            native_enum=False,
-            values_callable=enum_values,
-            validate_strings=True,
-        ),
-        nullable=False,
-    )
+    kind: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
     session: Mapped[AgentSession] = relationship(back_populates="events")

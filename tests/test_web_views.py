@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi.testclient import TestClient
 
-from conftest import create_entry, create_question, start_session
+from conftest import auth_headers, create_entry, create_question, start_session
 
 
 def test_feed_page_returns_expected_substrings(client: TestClient) -> None:
@@ -36,3 +38,21 @@ def test_question_detail_page_returns_expected_substrings(client: TestClient) ->
     assert response.status_code == 200
     assert "Attempts made" in response.text
     assert "Linked entries" in response.text
+
+
+def test_active_sessions_page_returns_expected_substrings(client: TestClient) -> None:
+    session = start_session(client)
+    event_response = client.post(
+        f"/sessions/{session['session_id']}/events",
+        headers=auth_headers(session_id=session["session_id"]),
+        json={
+            "kind": "tool_result",
+            "ts": datetime.now(UTC).isoformat(),
+            "payload": {"source_tool": "claude_code", "project_slug": "web-demo"},
+        },
+    )
+    assert event_response.status_code == 200
+    response = client.get("/sessions/active", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "active sessions" in response.text
+    assert "claude_code" in response.text

@@ -11,6 +11,8 @@ from fixlog.schemas.common import ORMModel
 class SessionStartRequest(BaseModel):
     model_name: str
     harness_name: str
+    source_tool: str | None = None
+    source_tool_session_id: str | None = None
 
 
 class SessionStartResponse(BaseModel):
@@ -41,4 +43,5 @@ class SessionRead(ORMModel):
     started_at: datetime
     ended_at: datetime | None
     last_heartbeat: datetime
-
+    source_tool: str | None = None
+    source_tool_session_id: str | None = None

@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from fixlog.api.feed import build_feed
+from fixlog.api.sessions import build_active_sessions
 from fixlog.api.shared import entry_read, load_entry_or_none, load_question_or_none, question_read
 from fixlog.db.models import Entry, Question
 from fixlog.db.session import get_db
@@ -76,6 +77,16 @@ def feed_list_partial(request: Request, db: Session = Depends(get_db)) -> HTMLRe
     )
 
 
+@router.get("/sessions/active", response_class=HTMLResponse)
+def active_sessions_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    sessions = build_active_sessions(db)
+    return templates.TemplateResponse(
+        request,
+        "active_sessions.html",
+        {"sessions": sessions},
+    )
+
+
 @router.get("/entries/{entry_id}", response_class=Response)
 def entry_detail_page(
     entry_id: UUID, request: Request, db: Session = Depends(get_db)
@@ -115,4 +126,3 @@ def question_detail_page(
 def _wants_html(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "text/html" in accept and "application/json" not in accept
-
