@@ -78,7 +78,7 @@ def env_context() -> dict[str, object]:
 
 def error_signature(text: str = "ValueError: broken") -> dict[str, object]:
     return {
-        "canonical_string": text,
+        "raw_text": text,
         "raw_examples": [text],
         "language": "python",
         "framework": None,

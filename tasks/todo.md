@@ -94,3 +94,41 @@
 - Verification completed:
   - `.venv/bin/pytest tests/normalizer -q` with 70 passing tests.
   - `.venv/bin/pytest -q` with 98 passing tests.
+
+# fixlog Phase 2.5 Todo
+
+## Approved Spec Amendments
+- [x] Replace canonical string field separator with ASCII Unit Separator `\x1f`.
+- [x] Strip `\x1f` defensively from canonical fields before joining.
+- [x] Verify idempotency with a script and captured manual spot-check docs.
+- [x] Wire the Python normalizer into POST `/entries`, POST `/questions`, and GET `/search`.
+- [x] Store structured normalizer output on `ErrorSignature`.
+
+## Implementation Sequence
+- [x] Separator fix in normalizer.
+- [x] Regenerate all expected JSON fixtures.
+- [x] Add separator collision tests.
+- [x] Run full normalizer test suite.
+- [x] Add `scripts/verify_idempotency.py`.
+- [x] Run idempotency script on all fixtures and capture output.
+- [x] Manual three-fixture spot check and write `docs/idempotency_verification.md`.
+- [x] Add Alembic migration and model fields for structured normalizer output.
+- [x] Update request schemas for POST `/entries` and POST `/questions`.
+- [x] Wire server-side normalization into handlers.
+- [x] Update search endpoint to normalize query input.
+- [x] Update affected tests.
+- [x] Update `scripts/dev_seed.py`.
+- [x] Run full pytest suite.
+- [x] Add trivial entry detail metadata block if clean.
+
+## Phase 2.5 Review Notes
+- Canonical strings now use ASCII Unit Separator `\x1f`; literal pipes remain message content.
+- Expected normalizer JSON now includes hashes and was regenerated from the normalizer.
+- Idempotency verifier passed over 20 fixtures; 16 round-trips changed `error_kind` to `generic`, which is acceptable because canonical strings are their own input shape.
+- Server-side POST `/entries`, POST `/questions`, and GET `/search` now normalize raw Python error text.
+- Verification completed:
+  - `.venv/bin/pytest tests/normalizer -q` with 73 passing tests.
+  - `.venv/bin/python scripts/verify_idempotency.py` passed over 20 fixtures.
+  - `.venv/bin/alembic upgrade head` applied `0001` and `0002` against `/tmp/fixlog-phase25-alembic.sqlite3`.
+  - `.venv/bin/pytest -q` with 106 passing tests.
+  - `scripts/dev_seed.py` ran twice against `/tmp/fixlog-phase25-seed.sqlite3`; counts stayed idempotent and `session_events` stayed at 0.

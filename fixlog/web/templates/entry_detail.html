@@ -16,6 +16,22 @@
     </div>
     <h1 class="text-xl font-semibold">Entry</h1>
     <pre class="mt-4 overflow-auto rounded bg-slate-950 p-4 text-sm text-slate-100"><code>{{ entry.error_signature.canonical_string }}</code></pre>
+    {% if entry.error_signature.exception_type %}
+      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+        <div>
+          <dt class="text-slate-500">Exception</dt>
+          <dd class="font-medium text-slate-900">{{ entry.error_signature.exception_type }}</dd>
+        </div>
+        <div>
+          <dt class="text-slate-500">Kind</dt>
+          <dd class="font-medium text-slate-900">{{ entry.error_signature.error_kind }}</dd>
+        </div>
+        <div>
+          <dt class="text-slate-500">Chained</dt>
+          <dd class="font-medium text-slate-900">{{ 'yes' if entry.error_signature.was_chained else 'no' }}</dd>
+        </div>
+      </dl>
+    {% endif %}
   </section>
 
   <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
@@ -85,4 +101,3 @@
     </ol>
   </details>
 {% endblock %}
-

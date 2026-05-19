@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from fixlog.api.shared import error_signature_hash, upsert_error_signature
+from fixlog.api.shared import upsert_error_signature
 from fixlog.config import get_settings
 from fixlog.db.models import (
     Account,
@@ -27,10 +27,61 @@ from fixlog.db.models import (
 from fixlog.db.seed import seed_accounts_from_settings
 from fixlog.db.session import SessionLocal, engine
 from fixlog.identity.persona import display_name_for_persona, persona_id_for
-from fixlog.schemas.error_signature import ErrorSignatureInput, LanguageSchema
+from fixlog.schemas.error_signature import ErrorSignatureInput
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+ENTRY_RAW_ERRORS = [
+    """Traceback (most recent call last):
+  File "/seed/app.py", line 10, in load_user
+    return users[user_id]
+KeyError: 'SeedUserABC123456789'
+""",
+    """Traceback (most recent call last):
+  File "/seed/db.py", line 22, in query_user
+    cursor.execute(sql)
+psycopg2.errors.UndefinedColumn: column "display_name" does not exist
+LINE 1: SELECT display_name FROM users WHERE id = 101
+               ^
+""",
+    """FAILED tests/test_seed.py::test_total - AssertionError: assert 3 == 4
+- 4
++ 3
+""",
+    "ERROR: Could not find a version that satisfies the requirement seedpkg==99.0",
+    """Traceback (most recent call last):
+  File "/seed/worker.py", line 40, in run
+    client.send(payload)
+AttributeError: 'NoneType' object has no attribute 'send'
+""",
+    """Traceback (most recent call last):
+  File "/seed/config.py", line 12, in parse
+    int(value)
+ValueError: invalid literal for int() with base 10: 'SeedABC123456789'
+""",
+    "RuntimeError: worker failed for path /Users/seed/jobs/output.json",
+    """Traceback (most recent call last):
+  File "/seed/tree.py", line 5, in visit
+    return visit(node.parent)
+  File "/seed/tree.py", line 5, in visit
+    return visit(node.parent)
+  File "/seed/tree.py", line 5, in visit
+    return visit(node.parent)
+RecursionError: maximum recursion depth exceeded
+""",
+    "FAILED tests/test_seed.py::test_title - AssertionError: assert 'Seed A' == 'Seed B'",
+    """Traceback (most recent call last):
+  File "/seed/importer.py", line 3, in <module>
+    from seed.settings import missing
+ImportError: cannot import name 'missing' from 'seed.settings' (/seed/settings.py)
+""",
+]
+
+QUESTION_RAW_ERRORS = [
+    f"Traceback (most recent call last):\n  File \"/seed/question_{index}.py\", line {index + 1}, in run\n    raise ValueError(\"SeedQuestionABC{index}123456\")\nValueError: SeedQuestionABC{index}123456\n"
+    for index in range(5)
+]
 
 
 def main() -> None:
@@ -101,9 +152,9 @@ def _seed_entries(db: Session, sessions: list[AgentSession]) -> list[Entry]:
         signature = upsert_error_signature(
             db,
             ErrorSignatureInput(
-                canonical_string=f"SeedError{index}: reproducible failure",
-                raw_examples=[f"Traceback ... SeedError{index}: reproducible failure"],
-                language=LanguageSchema.PYTHON,
+                raw_text=ENTRY_RAW_ERRORS[index],
+                raw_examples=[ENTRY_RAW_ERRORS[index]],
+                language="python",
                 framework=None,
             ),
         )
@@ -133,9 +184,9 @@ def _seed_entries(db: Session, sessions: list[AgentSession]) -> list[Entry]:
             also = upsert_error_signature(
                 db,
                 ErrorSignatureInput(
-                    canonical_string=f"SeedAlternate{index}: same fix",
+                    raw_text=f"AlternateSeedError{index}: same fix",
                     raw_examples=[],
-                    language=LanguageSchema.PYTHON,
+                    language="python",
                     framework=None,
                 ),
             )
@@ -159,9 +210,9 @@ def _seed_questions(db: Session, sessions: list[AgentSession]) -> list[Question]
         signature = upsert_error_signature(
             db,
             ErrorSignatureInput(
-                canonical_string=f"SeedQuestion{index}: agent is stuck",
-                raw_examples=[f"SeedQuestion{index}: agent is stuck"],
-                language=LanguageSchema.PYTHON,
+                raw_text=QUESTION_RAW_ERRORS[index],
+                raw_examples=[QUESTION_RAW_ERRORS[index]],
+                language="python",
                 framework=None,
             ),
         )

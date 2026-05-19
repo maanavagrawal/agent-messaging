@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from uuid import UUID
 
+from fastapi import HTTPException, status
 from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
@@ -12,13 +13,15 @@ from fixlog.db.models import (
     Edit,
     Entry,
     EntryAlsoMatch,
+    ErrorKind,
     ErrorSignature,
     Language,
     Question,
     QuestionEntryLink,
     Verification,
 )
-from fixlog.identity.persona import sha256_hex
+from fixlog.normalizer.common import CANONICAL_SEPARATOR
+from fixlog.normalizer.python import normalize_python_error
 from fixlog.schemas.account import AccountRead
 from fixlog.schemas.edit import EditRead
 from fixlog.schemas.entry import EntryRead, EntrySummary
@@ -28,12 +31,12 @@ from fixlog.schemas.session import AgentPersonaRead
 from fixlog.schemas.verification import VerificationRead
 
 
-def error_signature_hash(canonical_string: str) -> str:
-    return sha256_hex(canonical_string)[:16]
+def _traceback_shape_json(shape: list[tuple[str, str]]) -> list[list[str]]:
+    return [[module, function] for module, function in shape]
 
 
 def preview(text: str, length: int = 120) -> str:
-    compact = " ".join(text.split())
+    compact = " ".join(text.replace(CANONICAL_SEPARATOR, " ").split())
     if len(compact) <= length:
         return compact
     return f"{compact[: length - 1]}…"
@@ -42,19 +45,45 @@ def preview(text: str, length: int = 120) -> str:
 def upsert_error_signature(
     db: Session, payload: ErrorSignatureInput
 ) -> ErrorSignature:
-    hash_value = error_signature_hash(payload.canonical_string)
+    if payload.language != Language.PYTHON.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only language='python' is supported in Phase 2.5",
+        )
+    normalized = normalize_python_error(payload.raw_text)
     signature = db.scalar(
-        select(ErrorSignature).where(ErrorSignature.hash == hash_value)
+        select(ErrorSignature).where(ErrorSignature.hash == normalized.hash)
     )
     if signature is not None:
+        if signature.exception_type is None:
+            signature.exception_type = normalized.exception_type
+            signature.exception_message = normalized.exception_message
+            signature.last_frame_module = normalized.last_frame_module
+            signature.last_frame_function = normalized.last_frame_function
+            signature.traceback_shape = _traceback_shape_json(normalized.traceback_shape)
+            signature.error_kind = ErrorKind(normalized.error_kind.value)
+            signature.was_chained = normalized.was_chained
+        if payload.raw_examples:
+            existing_examples = list(signature.raw_examples)
+            for example in payload.raw_examples:
+                if example not in existing_examples:
+                    existing_examples.append(example)
+            signature.raw_examples = existing_examples
         return signature
     signature = ErrorSignature(
-        canonical_string=payload.canonical_string,
-        hash=hash_value,
+        canonical_string=normalized.canonical_string,
+        hash=normalized.hash,
         raw_examples=payload.raw_examples,
-        language=Language(payload.language.value),
+        language=Language(payload.language),
         framework=payload.framework,
         embedding=None,
+        exception_type=normalized.exception_type,
+        exception_message=normalized.exception_message,
+        last_frame_module=normalized.last_frame_module,
+        last_frame_function=normalized.last_frame_function,
+        traceback_shape=_traceback_shape_json(normalized.traceback_shape),
+        error_kind=ErrorKind(normalized.error_kind.value),
+        was_chained=normalized.was_chained,
     )
     db.add(signature)
     db.flush()

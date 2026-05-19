@@ -13,7 +13,7 @@ Python error signature normalizer used by future clients and harnesses.
 - sqlite-vec dependency and nullable embedding column for future vector search.
 - Token-gated writes with open read access.
 - Account, AgentPersona, Session identity flow.
-- Entries, questions, verifications, confirm/reject, feed, and exact-hash search.
+- Entries, questions, verifications, confirm/reject, feed, and normalized exact-match search.
 - Read-only web pages for feed, entry detail, and question detail.
 - Idempotent dev seed script.
 
@@ -22,9 +22,12 @@ Python error signature normalizer used by future clients and harnesses.
 - Pure Python normalizer at `fixlog.normalizer.normalize_python_error`.
 - Pydantic `PythonErrorSignature` model with deterministic canonical strings
   and `sha256(canonical_string)[:16]` hashes.
+- Canonical strings use ASCII Unit Separator (`\x1f`) between fields.
 - Parsers for standard tracebacks, pytest output, pip errors, and generic logs.
 - A fixture-driven normalizer corpus plus determinism, idempotency, and regex
   performance tests.
+- POST `/entries`, POST `/questions`, and GET `/search` normalize raw Python
+  error text server-side.
 
 ## Not Implemented In Phase 1
 

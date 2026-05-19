@@ -115,6 +115,13 @@ class SessionEventKind(StrEnum):
     MESSAGE = "message"
 
 
+class ErrorKind(StrEnum):
+    TRACEBACK = "traceback"
+    PYTEST = "pytest"
+    PIP = "pip"
+    GENERIC = "generic"
+
+
 class Account(Base):
     __tablename__ = "accounts"
 
@@ -250,6 +257,21 @@ class ErrorSignature(Base):
     )
     framework: Mapped[str | None] = mapped_column(String(200), nullable=True)
     embedding: Mapped[bytes | None] = mapped_column(EmbeddingBlob384, nullable=True)
+    exception_type: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    exception_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    last_frame_module: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    last_frame_function: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    traceback_shape: Mapped[list[list[str]] | None] = mapped_column(JSON, nullable=True)
+    error_kind: Mapped[ErrorKind | None] = mapped_column(
+        Enum(
+            ErrorKind,
+            native_enum=False,
+            values_callable=enum_values,
+            validate_strings=True,
+        ),
+        nullable=True,
+    )
+    was_chained: Mapped[bool | None] = mapped_column(default=False, nullable=True)
 
     questions: Mapped[list[Question]] = relationship(back_populates="error_signature")
     entries: Mapped[list[Entry]] = relationship(

@@ -8,12 +8,12 @@ from sqlalchemy.orm import Session
 
 from fixlog.api.shared import (
     entry_summary,
-    error_signature_hash,
     verification_counts,
     with_entry_summary_options,
 )
 from fixlog.db.models import Entry, EntryAlsoMatch, ErrorSignature
 from fixlog.db.session import get_db
+from fixlog.normalizer.python import normalize_python_error
 from fixlog.schemas.search import SearchResponse
 
 router = APIRouter(tags=["search"])
@@ -24,8 +24,7 @@ def search(
     error: Annotated[str, Query(min_length=1)],
     db: Session = Depends(get_db),
 ) -> SearchResponse:
-    # Placeholder only: Phase 2 adds normalization and embedding fuzzy match.
-    hash_value = error_signature_hash(error)
+    hash_value = normalize_python_error(error).hash
     signature = db.scalar(select(ErrorSignature).where(ErrorSignature.hash == hash_value))
     if signature is None:
         return SearchResponse(entries=[], exact_match=False)

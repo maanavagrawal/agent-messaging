@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
-from conftest import auth_headers, create_entry, create_question, start_session
+from conftest import auth_headers, create_entry, create_question, question_payload, start_session
 
 
 def test_create_list_and_get_question(client: TestClient) -> None:
@@ -41,3 +41,32 @@ def test_question_status_filter(client: TestClient) -> None:
     response = client.get("/questions?status=open")
     assert response.status_code == 200
     assert len(response.json()["items"]) == 1
+
+
+def test_questions_from_different_sessions_share_normalized_signature(
+    client: TestClient,
+) -> None:
+    first_session = start_session(client)
+    second_session = start_session(client)
+    raw = """Traceback (most recent call last):
+  File "/tmp/app.py", line 42, in parse_config
+    int(value)
+ValueError: invalid literal for int() with base 10: 'ConfigABC123456789'
+"""
+    variation = raw.replace("/tmp/app.py", "/Users/alice/app.py").replace(
+        "line 42", "line 99"
+    ).replace("ConfigABC123456789", "ConfigXYZ987654321")
+
+    first = create_question(
+        client,
+        first_session["session_id"],
+        question_payload(raw),
+    )
+    second = create_question(
+        client,
+        second_session["session_id"],
+        question_payload(variation),
+    )
+
+    assert second["error_signature"]["id"] == first["error_signature"]["id"]
+    assert first["error_signature"]["exception_type"] == "ValueError"
