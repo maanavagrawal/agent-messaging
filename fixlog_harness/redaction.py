@@ -180,6 +180,8 @@ def _redact_high_entropy(value: str) -> tuple[str, bool]:
 
 
 def _looks_high_entropy(value: str) -> bool:
+    if "/" in value or "\\" in value:
+        return False
     lowered = value.lower()
     if any(marker in lowered for marker in _STRING_DICT_MARKERS):
         return False

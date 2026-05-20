@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from fixlog.auth.deps import require_account, require_session
 from fixlog.db.models import Account, AgentPersona, AgentSession, SessionEvent, utc_now
@@ -171,54 +172,46 @@ def list_session_events(
 
 def build_active_sessions(db: Session) -> list[ActiveSessionSummary]:
     now = utc_now()
-    active_cutoff = now.timestamp() - 600
-    hour_cutoff = now.timestamp() - 3600
-    # SQLite stores timezone-aware values as timestamp strings through the
-    # project UTCDateTime adapter, so compare using Python after a bounded read.
-    events = db.scalars(
-        select(SessionEvent)
+    active_cutoff = now - timedelta(seconds=600)
+    hour_cutoff = now - timedelta(seconds=3600)
+    sessions = db.scalars(
+        select(AgentSession)
         .options(
-            joinedload(SessionEvent.session)
-            .joinedload(AgentSession.persona)
-            .joinedload(AgentPersona.account)
+            joinedload(AgentSession.persona).joinedload(AgentPersona.account),
+            selectinload(AgentSession.events),
         )
-        .order_by(SessionEvent.ts.desc())
-        .limit(1000)
+        .where(AgentSession.last_heartbeat >= active_cutoff)
+        .order_by(AgentSession.last_heartbeat.desc())
+        .limit(100)
     ).all()
-    by_session: dict[UUID, list[SessionEvent]] = {}
-    for event in events:
-        if event.ts.timestamp() >= hour_cutoff:
-            by_session.setdefault(event.session_id, []).append(event)
     summaries: list[ActiveSessionSummary] = []
-    for session_id, session_events in by_session.items():
-        active_events = [
-            event for event in session_events if event.ts.timestamp() >= active_cutoff
-        ]
-        if not active_events:
+    for session in sessions:
+        session_events = sorted(session.events, key=lambda item: item.ts, reverse=True)
+        if not session_events:
             continue
-        latest = max(active_events, key=lambda item: item.ts)
-        session = latest.session
+        recent_events = [event for event in session_events if event.ts >= hour_cutoff]
+        counted_events = recent_events or session_events
         project_slug = _latest_payload_value(session_events, "project_slug")
         source_tool = session.source_tool or _latest_payload_value(
             session_events, "source_tool"
         )
         summaries.append(
             ActiveSessionSummary(
-                session_id=session_id,
+                session_id=session.id,
                 persona_id=session.persona_id,
                 persona_display_name=session.persona.display_name,
                 account_name=session.persona.account.human_name,
                 source_tool=source_tool,
                 source_tool_session_id=session.source_tool_session_id,
                 project_slug=project_slug,
-                event_count_last_hour=len(session_events),
+                event_count_last_hour=len(counted_events),
                 redaction_count=sum(
                     1 for event in session_events if event.payload.get("redacted") is True
                 ),
                 stuck_emitted=any(
                     event.kind == "stuck_emitted" for event in session_events
                 ),
-                last_event_at=latest.ts,
+                last_event_at=session.last_heartbeat,
             )
         )
     return sorted(summaries, key=lambda item: item.last_event_at, reverse=True)

@@ -170,8 +170,16 @@
 - The live Claude Code smoke test is implemented as a gated test because it needs a real local Claude Code session log path.
 - Raw event payload reads are token-gated even though existing entries/questions remain read-open.
 - `watchdog` and `anthropic` are pinned dependencies, but imports are lazy where possible so unit tests stay local and deterministic.
+- Real replay smoke completed against `/Users/maanavagrawal/.claude/projects/-Users-maanavagrawal-dev-memoir/1f083691-dae9-4876-9c2e-605a43285d3f.jsonl`.
+  - The log had 65 JSONL lines, 15 tool calls, 15 tool results, and one non-Python command error.
+  - Replay captured 46 SessionEvents and `/sessions/active` showed `claude_code` project `memoir`.
+  - All 15 tool results paired with a matching tool call id.
+  - Source timestamps, cwd, git branch, git commit, and project slug were preserved.
+  - No real redactions were needed after fixing a false-positive path redaction bug.
+  - No pending harvest was written because the session had no current `git diff`.
+  - Watch mode booted after installing the pinned dependencies, then was stopped after startup verification.
 - Verification completed:
-  - `.venv/bin/pytest -q` with 134 passed and 1 gated live smoke skipped.
+  - `.venv/bin/pytest -q` with 135 passed and 1 gated live smoke skipped.
   - `.venv/bin/alembic upgrade head` against `/tmp/fixlog-phase3-alembic.sqlite3`.
   - `.venv/bin/python -m compileall fixlog fixlog_harness scripts tests`.
   - `scripts/dev_seed.py` ran twice against `/tmp/fixlog-phase3-seed.sqlite3`.

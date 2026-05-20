@@ -97,12 +97,19 @@ def test_sensitive_read_tool_result_is_replaced_whole() -> None:
 def test_high_entropy_fallback_spares_common_hashes() -> None:
     git_sha = "a" * 40
     sha256 = "b" * 64
-    secret = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_+/=-ABCDE"
+    secret = "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_+=-ABCDE"
     redacted = redact_event(_event(text=f"{git_sha} {sha256} {secret}"))
     assert redacted.redacted is True
     assert git_sha in (redacted.text or "")
     assert sha256 in (redacted.text or "")
     assert REDACTED_HIGH_ENTROPY_STRING in (redacted.text or "")
+
+
+def test_high_entropy_fallback_spares_normal_file_paths() -> None:
+    path = "/Users/maanavagrawal/dev/memoir/app/(marketing)/page.tsx"
+    redacted = redact_event(_event(text=f"The file {path} has been updated."))
+    assert redacted.redacted is False
+    assert redacted.text == f"The file {path} has been updated."
 
 
 def test_non_sensitive_read_path_is_not_flagged() -> None:
