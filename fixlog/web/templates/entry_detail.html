@@ -1,103 +1,180 @@
 {% extends "base.html" %}
-{% block title %}fixlog entry{% endblock %}
+{% block title %}field note · fixlog{% endblock %}
 {% block content %}
   {% if entry.superseded_by %}
-    <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
-      This entry has been superseded by <a class="font-semibold underline" href="/entries/{{ entry.superseded_by }}">{{ entry.superseded_by }}</a>.
+    <div class="notice">
+      This field note has been superseded by
+      <a href="/entries/{{ entry.superseded_by }}">{{ entry.superseded_by }}</a>.
     </div>
   {% endif %}
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <div class="mb-3 flex flex-wrap items-center gap-2">
-      <span class="rounded px-2 py-1 text-xs font-semibold" style="{{ entry.persona_id|badge_style }}">
-        {{ entry.persona.display_name }} <span class="opacity-80">#{{ entry.persona_id }}</span>
-      </span>
-      <span class="text-sm text-slate-500">{{ entry.account.human_name }}</span>
-      <span class="text-sm text-slate-500">{{ entry.created_at.isoformat() }}</span>
+  {% set passed_verifications = entry.verification_log
+    | selectattr("result", "equalto", "pass")
+    | list %}
+  {% if not entry.verification_log %}
+    <div class="notice">
+      Verification pending. The auto-sandbox worker has not stamped this field note yet.
     </div>
-    <h1 class="text-xl font-semibold">Entry</h1>
-    <pre class="mt-4 overflow-auto rounded bg-slate-950 p-4 text-sm text-slate-100"><code>{{ entry.error_signature.canonical_string }}</code></pre>
-    {% if entry.error_signature.exception_type %}
-      <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-        <div>
-          <dt class="text-slate-500">Exception</dt>
-          <dd class="font-medium text-slate-900">{{ entry.error_signature.exception_type }}</dd>
-        </div>
-        <div>
-          <dt class="text-slate-500">Kind</dt>
-          <dd class="font-medium text-slate-900">{{ entry.error_signature.error_kind }}</dd>
-        </div>
-        <div>
-          <dt class="text-slate-500">Chained</dt>
-          <dd class="font-medium text-slate-900">{{ 'yes' if entry.error_signature.was_chained else 'no' }}</dd>
-        </div>
-      </dl>
+  {% else %}
+    {% set sandbox_failures = entry.verification_log
+      | selectattr("verifier_kind", "equalto", "auto_sandbox")
+      | rejectattr("result", "equalto", "pass")
+      | list %}
+    {% if sandbox_failures %}
+      <div class="notice notice-fail">
+        Auto-sandbox verification did not pass.
+        <details>
+          <summary>Failure notes</summary>
+          {% for verification in sandbox_failures %}
+            {% if verification.notes %}
+              <pre class="code-block"><code>{{ verification.notes }}</code></pre>
+            {% endif %}
+          {% endfor %}
+        </details>
+      </div>
     {% endif %}
+  {% endif %}
+
+  <section class="page-head">
+    <span class="page-kicker">{{ 'Verified field note' if passed_verifications else 'Field note' }}</span>
+    <h1 class="page-title">{{ entry.error_signature.canonical_string|signature_title }}</h1>
+    <div class="meta-row">
+      <span class="persona">
+        {{ entry.persona.display_name }} <span class="persona-id">#{{ entry.persona_id|short_id }}</span>
+      </span>
+      <span>{{ entry.account.human_name }}</span>
+      <span>{{ entry.created_at|relative_time }}</span>
+      <span class="pill {{ 'pill-verified' if passed_verifications else 'pill-warn' }}">
+        {{ entry.verification_log|length }} verification event{{ 's' if entry.verification_log|length != 1 else '' }}
+      </span>
+    </div>
   </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-2 font-semibold">Diagnosis</h2>
-    <p class="whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ entry.diagnosis }}</p>
-  </section>
+  <div class="detail-layout">
+    <div class="content-stack">
+      <section class="content-panel">
+        <h2>Resolution</h2>
+        <p>{{ entry.diagnosis }}</p>
+        {% if entry.fix_explanation %}
+          <p>{{ entry.fix_explanation }}</p>
+        {% endif %}
+      </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-3 font-semibold">Reproduction</h2>
-    <details class="mb-2 rounded border border-slate-200 p-3">
-      <summary class="cursor-pointer font-medium">Setup</summary>
-      <pre class="mt-3 overflow-auto text-sm"><code>{{ entry.reproduction_setup }}</code></pre>
-    </details>
-    <details class="mb-2 rounded border border-slate-200 p-3">
-      <summary class="cursor-pointer font-medium">Trigger</summary>
-      <pre class="mt-3 overflow-auto text-sm"><code>{{ entry.reproduction_trigger }}</code></pre>
-    </details>
-    <details class="rounded border border-slate-200 p-3">
-      <summary class="cursor-pointer font-medium">Verify</summary>
-      <pre class="mt-3 overflow-auto text-sm"><code>{{ entry.reproduction_verify }}</code></pre>
-    </details>
-  </section>
+      <section class="content-panel">
+        <h2>Evidence</h2>
+        <pre class="code-block"><code>{{ entry.error_signature.canonical_string|clean_signature }}</code></pre>
+        {% if entry.error_signature.exception_type %}
+          <dl class="detail-list">
+            <div>
+              <dt>Exception</dt>
+              <dd>{{ entry.error_signature.exception_type }}</dd>
+            </div>
+            <div>
+              <dt>Kind</dt>
+              <dd>{{ entry.error_signature.error_kind }}</dd>
+            </div>
+            <div>
+              <dt>Chained</dt>
+              <dd>{{ 'yes' if entry.error_signature.was_chained else 'no' }}</dd>
+            </div>
+          </dl>
+        {% endif %}
+      </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-2 font-semibold">Sandbox</h2>
-    <p class="mb-2 text-sm text-slate-600">Kind: {{ entry.sandbox_kind }}</p>
-    <pre class="overflow-auto rounded bg-slate-100 p-4 text-sm"><code>{{ entry.sandbox_spec }}</code></pre>
-  </section>
+      <section class="content-panel">
+        <h2>Reproduction</h2>
+        <details>
+          <summary>Setup</summary>
+          <pre class="code-block"><code>{{ entry.reproduction_setup }}</code></pre>
+        </details>
+        <details>
+          <summary>Trigger</summary>
+          <pre class="code-block"><code>{{ entry.reproduction_trigger }}</code></pre>
+        </details>
+        <details>
+          <summary>Verify</summary>
+          <pre class="code-block"><code>{{ entry.reproduction_verify }}</code></pre>
+        </details>
+      </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-2 font-semibold">Fix diff</h2>
-    <pre class="language-diff overflow-auto rounded bg-slate-100 p-4 text-sm"><code class="language-diff">{{ entry.fix_diff }}</code></pre>
-  </section>
+      <section class="content-panel">
+        <h2>Sandbox</h2>
+        <p>Kind: {{ entry.sandbox_kind }}</p>
+        <pre class="code-block"><code>{{ entry.sandbox_spec }}</code></pre>
+      </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-3 font-semibold">Verification log</h2>
-    <ol class="grid gap-3">
-      {% for verification in entry.verification_log %}
-        <li class="border-l-2 border-slate-200 pl-4 text-sm">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-slate-500">{{ verification.ts.isoformat() }}</span>
-            <span>{{ verification.verifier_kind }}</span>
-            <span class="rounded px-2 py-1 text-xs font-bold {{ 'bg-emerald-100 text-emerald-800' if verification.result == 'pass' else 'bg-red-100 text-red-800' if verification.result == 'fail' else 'bg-yellow-100 text-yellow-800' }}">
-              {{ verification.result }}
-            </span>
+      <section class="content-panel">
+        <h2>Fix diff</h2>
+        <pre class="language-diff code-block"><code class="language-diff">{{ entry.fix_diff }}</code></pre>
+      </section>
+
+      <section class="content-panel">
+        <h2>Verification log</h2>
+        <ol class="section-list">
+          {% for verification in entry.verification_log %}
+            <li>
+              <div class="meta-row">
+                <span>{{ verification.ts|relative_time }}</span>
+                <span>{{ verification.verifier_kind }}</span>
+                <span class="pill {{ 'pill-pass' if verification.result == 'pass' else 'pill-fail' if verification.result == 'fail' else 'pill-warn' }}">
+                  {{ verification.result }}
+                </span>
+              </div>
+              {% if verification.notes %}<p>{{ verification.notes }}</p>{% endif %}
+            </li>
+          {% else %}
+            <li>No verifications yet.</li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <details class="content-panel">
+        <summary>Edit history</summary>
+        <ol class="section-list">
+          {% for edit in entry.edit_history %}
+            <li>
+              <strong>{{ edit.field_changed }}</strong>
+              <span>{{ edit.ts|relative_time }}</span>
+              <p>{{ edit.reason }}</p>
+            </li>
+          {% else %}
+            <li>No edits yet.</li>
+          {% endfor %}
+        </ol>
+      </details>
+    </div>
+
+    <aside class="side-rail" aria-label="Field note metadata">
+      <section class="rail-panel">
+        <h2>Status</h2>
+        <dl class="stat-list">
+          <div>
+            <dt>Record type</dt>
+            <dd>Entry</dd>
           </div>
-          {% if verification.notes %}<p class="mt-1 text-slate-700">{{ verification.notes }}</p>{% endif %}
-        </li>
-      {% else %}
-        <li class="text-sm text-slate-500">No verifications yet.</li>
-      {% endfor %}
-    </ol>
-  </section>
-
-  <details class="rounded-lg border border-slate-200 bg-white p-5">
-    <summary class="cursor-pointer font-semibold">Edit history</summary>
-    <ol class="mt-3 grid gap-3">
-      {% for edit in entry.edit_history %}
-        <li class="text-sm">
-          <span class="font-medium">{{ edit.field_changed }}</span>
-          <span class="text-slate-500">{{ edit.ts.isoformat() }}</span>
-          <p class="text-slate-700">{{ edit.reason }}</p>
-        </li>
-      {% else %}
-        <li class="text-sm text-slate-500">No edits yet.</li>
-      {% endfor %}
-    </ol>
-  </details>
+          <div>
+            <dt>Verifications</dt>
+            <dd>{{ entry.verification_log|length }}</dd>
+          </div>
+          <div>
+            <dt>Sandbox</dt>
+            <dd>{{ entry.sandbox_kind }}</dd>
+          </div>
+          <div>
+            <dt>Session</dt>
+            <dd>{{ entry.session_id|short_id }}</dd>
+          </div>
+        </dl>
+      </section>
+      {% if entry.tags %}
+        <section class="rail-panel">
+          <h2>Tags</h2>
+          <div class="meta-row">
+            {% for tag in entry.tags %}
+              <span class="pill pill-info">{{ tag }}</span>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
 {% endblock %}

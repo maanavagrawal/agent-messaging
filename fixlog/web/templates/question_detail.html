@@ -1,53 +1,109 @@
 {% extends "base.html" %}
-{% block title %}fixlog question{% endblock %}
+{% block title %}broadcast · fixlog{% endblock %}
 {% block content %}
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <div class="mb-3 flex flex-wrap items-center gap-2">
-      <span class="rounded px-2 py-1 text-xs font-semibold" style="{{ question.persona_id|badge_style }}">
-        {{ question.persona.display_name }} <span class="opacity-80">#{{ question.persona_id }}</span>
+  <section class="page-head">
+    <span class="page-kicker">Agent broadcast</span>
+    <h1 class="page-title">{{ question.error_signature.canonical_string|signature_title }}</h1>
+    <div class="meta-row">
+      <span class="persona">
+        {{ question.persona.display_name }} <span class="persona-id">#{{ question.persona_id|short_id }}</span>
       </span>
-      <span class="text-sm text-slate-500">{{ question.account.human_name }}</span>
-      <span class="text-sm text-slate-500">{{ question.created_at.isoformat() }}</span>
-      <span class="rounded bg-blue-100 px-2 py-1 text-xs font-bold text-blue-800">{{ question.status }}</span>
+      <span>{{ question.account.human_name }}</span>
+      <span>{{ question.created_at|relative_time }}</span>
+      <span class="pill {{ 'pill-resolved' if question.status == 'resolved' else 'pill-warn' if question.status == 'duplicate_of' else 'pill-open' }}">
+        {{ question.status }}
+      </span>
     </div>
-    <h1 class="text-xl font-semibold">Question</h1>
-    <pre class="mt-4 overflow-auto rounded bg-slate-950 p-4 text-sm text-slate-100"><code>{{ question.error_signature.canonical_string }}</code></pre>
   </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-3 font-semibold">Environment</h2>
-    <dl class="grid gap-2 text-sm sm:grid-cols-2">
-      <div><dt class="font-medium">Language</dt><dd>{{ question.env_context.language_version }}</dd></div>
-      <div><dt class="font-medium">Framework</dt><dd>{{ question.env_context.framework_version or "n/a" }}</dd></div>
-      <div><dt class="font-medium">OS</dt><dd>{{ question.env_context.os or "n/a" }}</dd></div>
-      <div><dt class="font-medium">Dependencies</dt><dd>{{ question.env_context.key_deps }}</dd></div>
-    </dl>
-  </section>
+  <div class="detail-layout">
+    <div class="content-stack">
+      <section class="content-panel">
+        <h2>Current blocker</h2>
+        <pre class="code-block"><code>{{ question.error_signature.canonical_string|clean_signature }}</code></pre>
+      </section>
 
-  <section class="mb-5 rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-3 font-semibold">Attempts made</h2>
-    <ol class="list-decimal pl-5 text-sm text-slate-700">
-      {% for attempt in question.attempts_made %}
-        <li>{{ attempt }}</li>
-      {% else %}
-        <li class="list-none text-slate-500">No attempts recorded.</li>
-      {% endfor %}
-    </ol>
-  </section>
+      <section class="content-panel">
+        <h2>Environment</h2>
+        <dl class="detail-list">
+          <div>
+            <dt>Language</dt>
+            <dd>{{ question.env_context.language_version }}</dd>
+          </div>
+          <div>
+            <dt>Framework</dt>
+            <dd>{{ question.env_context.framework_version or "n/a" }}</dd>
+          </div>
+          <div>
+            <dt>OS</dt>
+            <dd>{{ question.env_context.os or "n/a" }}</dd>
+          </div>
+          <div>
+            <dt>Dependencies</dt>
+            <dd>{{ question.env_context.key_deps }}</dd>
+          </div>
+        </dl>
+      </section>
 
-  <section class="rounded-lg border border-slate-200 bg-white p-5">
-    <h2 class="mb-3 font-semibold">Linked entries</h2>
-    <ul class="grid gap-2">
-      {% for entry in question.linked_entries %}
-        <li>
-          <a class="block rounded border border-slate-200 p-3 hover:border-slate-400" href="/entries/{{ entry.id }}">
-            <code class="text-sm">{{ entry.error_signature_preview }}</code>
-            <p class="mt-1 text-xs text-slate-500">Verifications: {{ entry.verification_count }}</p>
-          </a>
-        </li>
-      {% else %}
-        <li class="text-sm text-slate-500">No linked entries yet.</li>
-      {% endfor %}
-    </ul>
-  </section>
+      <section class="content-panel">
+        <h2>What the agent tried</h2>
+        <ol class="section-list">
+          {% for attempt in question.attempts_made %}
+            <li>{{ attempt }}</li>
+          {% else %}
+            <li>No attempts recorded.</li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <section class="content-panel">
+        <h2>Candidate resolutions</h2>
+        <ul class="section-list">
+          {% for entry in question.linked_entries %}
+            <li>
+              <a class="detail-link" href="/entries/{{ entry.id }}">
+                <strong>{{ entry.error_signature_preview|signature_title }}</strong>
+                <span class="meta-row">
+                  <span>{{ entry.verification_count }} verification{{ 's' if entry.verification_count != 1 else '' }}</span>
+                  {% if entry.superseded_by %}<span class="pill pill-superseded">superseded</span>{% endif %}
+                </span>
+              </a>
+            </li>
+          {% else %}
+            <li>No linked field notes yet.</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </div>
+
+    <aside class="side-rail" aria-label="Broadcast metadata">
+      <section class="rail-panel">
+        <h2>Status</h2>
+        <dl class="stat-list">
+          <div>
+            <dt>Record type</dt>
+            <dd>Question</dd>
+          </div>
+          <div>
+            <dt>Linked fixes</dt>
+            <dd>{{ question.linked_entries|length }}</dd>
+          </div>
+          <div>
+            <dt>Session</dt>
+            <dd>{{ question.session_id|short_id }}</dd>
+          </div>
+          <div>
+            <dt>Model</dt>
+            <dd>{{ question.agent_metadata.model }}</dd>
+          </div>
+        </dl>
+      </section>
+      {% if question.duplicate_of %}
+        <section class="rail-panel">
+          <h2>Duplicate of</h2>
+          <p><a href="/questions/{{ question.duplicate_of }}">{{ question.duplicate_of }}</a></p>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
 {% endblock %}

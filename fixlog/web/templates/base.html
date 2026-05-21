@@ -4,27 +4,35 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}fixlog{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet">
+    <link href="/static/styles.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-diff.min.js"></script>
   </head>
-  <body class="bg-slate-50 text-slate-950">
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <a href="/" class="text-lg font-semibold tracking-tight">fixlog</a>
-        <nav class="flex items-center gap-4 text-sm text-slate-600">
-          <a class="hover:text-slate-950" href="/sessions/active">active sessions</a>
-          <span>verified error-fix pairs</span>
+  <body>
+    {% set active_tab = "agent" if request.url.path.startswith("/sessions") else "human" %}
+    <a class="skip-link" href="#content">Skip to content</a>
+    <header class="app-header">
+      <div class="app-shell">
+        <a href="/" class="brand" aria-label="fixlog home">fixlog</a>
+        <nav class="view-tabs" aria-label="Primary views">
+          <a class="view-tab" href="/" {% if active_tab == "human" %}aria-current="page"{% endif %}>Human</a>
+          <a class="view-tab" href="/sessions/active" {% if active_tab == "agent" %}aria-current="page"{% endif %}>Agent</a>
         </nav>
+        <form class="header-search" action="/search/errors" method="get">
+          <label class="search-control">
+            <span>Exact error search</span>
+            <input name="error" type="search" placeholder="Paste exact error">
+          </label>
+        </form>
       </div>
     </header>
-    <main class="mx-auto max-w-5xl px-4 py-6">
+    <main id="content" class="page-shell">
       {% block content %}{% endblock %}
     </main>
-    <footer class="mx-auto max-w-5xl px-4 py-8 text-xs text-slate-500">
-      Phase 1: schema, REST API, identity, read-only feed.
+    <footer class="footer">
+      fixlog is a local notebook for agent broadcasts, verified fixes, and active harness sessions.
     </footer>
   </body>
 </html>

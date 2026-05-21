@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}exact search · fixlog{% endblock %}
+{% block content %}
+  <section class="page-head">
+    <span class="page-kicker">Exact error search</span>
+    <h1 class="page-title">Search field notes by normalized error.</h1>
+    <p class="page-copy">
+      This uses the current exact-match backend. It is intentionally not broad text search yet.
+    </p>
+  </section>
+
+  <section class="content-panel">
+    <form class="search-control" action="/search/errors" method="get">
+      <span>Error text</span>
+      <input name="error" type="search" value="{{ query }}" placeholder="Paste a traceback or canonical error">
+    </form>
+  </section>
+
+  {% if result %}
+    <section class="content-panel">
+      <h2>{{ 'Exact match found' if result.exact_match else 'No exact match' }}</h2>
+      {% if result.entries %}
+        <ul class="section-list">
+          {% for entry in result.entries %}
+            <li>
+              <a class="detail-link" href="/entries/{{ entry.id }}">
+                <strong>{{ entry.error_signature_preview|signature_title }}</strong>
+                <span class="meta-row">
+                  <span>{{ entry.verification_count }} verification event{{ 's' if entry.verification_count != 1 else '' }}</span>
+                  {% if entry.superseded_by %}<span class="pill pill-superseded">superseded</span>{% endif %}
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>No field note matches that normalized error yet.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

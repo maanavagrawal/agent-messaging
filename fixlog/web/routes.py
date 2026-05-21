@@ -6,14 +6,30 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import func, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from fixlog.api.feed import build_feed
 from fixlog.api.sessions import build_active_sessions
-from fixlog.api.shared import entry_read, load_entry_or_none, load_question_or_none, question_read
-from fixlog.db.models import Entry, Question
+from fixlog.api.shared import (
+    entry_read,
+    entry_summary,
+    load_entry_or_none,
+    load_question_or_none,
+    question_read,
+    verification_counts,
+    with_entry_summary_options,
+)
+from fixlog.db.models import (
+    Entry,
+    EntryAlsoMatch,
+    ErrorSignature,
+    Question,
+    QuestionStatus,
+)
 from fixlog.db.session import get_db
+from fixlog.normalizer.python import normalize_python_error
+from fixlog.schemas.search import SearchResponse
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="fixlog/web/templates")
@@ -37,32 +53,44 @@ def _relative_time(value: datetime) -> str:
     return f"{days} day{'s' if days != 1 else ''} ago"
 
 
-def _badge_style(persona_id: str) -> str:
-    color = persona_id[:6].ljust(6, "0")
-    red = int(color[0:2], 16)
-    green = int(color[2:4], 16)
-    blue = int(color[4:6], 16)
-    luminance = (0.299 * red + 0.587 * green + 0.114 * blue) / 255
-    text = "#111827" if luminance > 0.62 else "#ffffff"
-    return f"background-color: #{color}; color: {text};"
+def _clean_signature(value: str) -> str:
+    return " ".join(value.replace("\x1f", " ").split())
+
+
+def _signature_title(value: str, limit: int = 96) -> str:
+    cleaned = _clean_signature(value)
+    if len(cleaned) <= limit:
+        return cleaned
+    return f"{cleaned[: limit - 1].rstrip()}..."
+
+
+def _short_id(value: object, length: int = 8) -> str:
+    return str(value)[:length]
 
 
 templates.env.filters["relative_time"] = _relative_time
-templates.env.filters["badge_style"] = _badge_style
+templates.env.filters["clean_signature"] = _clean_signature
+templates.env.filters["signature_title"] = _signature_title
+templates.env.filters["short_id"] = _short_id
 
 
 @router.get("/", response_class=HTMLResponse)
 def feed_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     feed = build_feed(db, limit=50, offset=0)
     entry_count = db.scalar(select(func.count(Entry.id))) or 0
-    question_count = db.scalar(select(func.count(Question.id))) or 0
+    open_question_count = (
+        db.scalar(
+            select(func.count(Question.id)).where(Question.status == QuestionStatus.OPEN)
+        )
+        or 0
+    )
     return templates.TemplateResponse(
         request,
         "feed.html",
         {
             "feed": feed,
             "entry_count": entry_count,
-            "question_count": question_count,
+            "open_question_count": open_question_count,
         },
     )
 
@@ -84,6 +112,20 @@ def active_sessions_page(request: Request, db: Session = Depends(get_db)) -> HTM
         request,
         "active_sessions.html",
         {"sessions": sessions},
+    )
+
+
+@router.get("/search/errors", response_class=HTMLResponse)
+def error_search_page(
+    request: Request,
+    error: str | None = None,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    result = _search_entries_for_web(error, db) if error else None
+    return templates.TemplateResponse(
+        request,
+        "search_results.html",
+        {"query": error or "", "result": result, "result_limit": WEB_SEARCH_LIMIT},
     )
 
 
@@ -126,3 +168,41 @@ def question_detail_page(
 def _wants_html(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "text/html" in accept and "application/json" not in accept
+
+
+WEB_SEARCH_LIMIT = 25
+
+
+def _search_entries_for_web(
+    error: str, db: Session, limit: int = WEB_SEARCH_LIMIT
+) -> SearchResponse:
+    hash_value = normalize_python_error(error).hash
+    signature = db.scalar(select(ErrorSignature).where(ErrorSignature.hash == hash_value))
+    if signature is None:
+        return SearchResponse(entries=[], exact_match=False)
+
+    also_match_entry_ids = select(EntryAlsoMatch.entry_id).where(
+        EntryAlsoMatch.error_signature_id == signature.id
+    )
+    entries = list(
+        db.scalars(
+            with_entry_summary_options(
+                select(Entry)
+                .where(
+                    or_(
+                        Entry.canonical_error_signature_id == signature.id,
+                        Entry.id.in_(also_match_entry_ids),
+                    )
+                )
+                .order_by(desc(Entry.created_at))
+                .limit(limit)
+            )
+        )
+        .unique()
+        .all()
+    )
+    counts = verification_counts(db, [entry.id for entry in entries])
+    return SearchResponse(
+        entries=[entry_summary(entry, counts.get(entry.id, 0)) for entry in entries],
+        exact_match=True,
+    )

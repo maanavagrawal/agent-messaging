@@ -1,58 +1,50 @@
 {% extends "base.html" %}
-{% block title %}active sessions · fixlog{% endblock %}
+{% block title %}agent · fixlog{% endblock %}
 {% block content %}
-  <section class="mb-6 flex flex-col gap-2">
-    <h1 class="text-2xl font-semibold">active sessions</h1>
-    <p class="text-sm text-slate-600">Sessions with harness events in the last 10 minutes.</p>
+  <section class="page-head">
+    <span class="page-kicker">Agent view</span>
+    <h1 class="page-title">Active harness sessions and real agent signals.</h1>
+    <p class="page-copy">
+      This tab only shows aggregate session data the backend already exposes:
+      source tool, project, event count, redactions, stuck signals, and last activity.
+    </p>
   </section>
 
   {% if sessions %}
-    <div class="overflow-hidden rounded-md bg-white ring-1 ring-slate-200">
-      <table class="min-w-full divide-y divide-slate-200 text-sm">
-        <thead class="bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-600">
-          <tr>
-            <th class="px-4 py-3">Tool</th>
-            <th class="px-4 py-3">Project</th>
-            <th class="px-4 py-3">Persona</th>
-            <th class="px-4 py-3">Events</th>
-            <th class="px-4 py-3">Signals</th>
-            <th class="px-4 py-3">Last event</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-slate-100">
-          {% for session in sessions %}
-            <tr>
-              <td class="px-4 py-3">
-                <span class="rounded bg-slate-900 px-2 py-1 text-xs font-medium text-white">{{ session.source_tool or "unknown" }}</span>
-              </td>
-              <td class="px-4 py-3 font-mono text-xs">{{ session.project_slug or "unknown" }}</td>
-              <td class="px-4 py-3">
-                <span class="rounded px-2 py-1 text-xs font-medium" style="{{ session.persona_id|badge_style }}">{{ session.persona_display_name }}</span>
-                <div class="mt-1 text-xs text-slate-500">{{ session.account_name }}</div>
-              </td>
-              <td class="px-4 py-3">{{ session.event_count_last_hour }}</td>
-              <td class="px-4 py-3">
-                <div class="flex flex-wrap gap-2">
-                  {% if session.stuck_emitted %}
-                    <span class="rounded bg-amber-100 px-2 py-1 text-xs font-medium text-amber-900">stuck_emitted</span>
-                  {% endif %}
-                  {% if session.redaction_count %}
-                    <span class="rounded bg-rose-100 px-2 py-1 text-xs font-medium text-rose-900">{{ session.redaction_count }} redacted</span>
-                  {% endif %}
-                  {% if not session.stuck_emitted and not session.redaction_count %}
-                    <span class="text-xs text-slate-500">none</span>
-                  {% endif %}
-                </div>
-              </td>
-              <td class="px-4 py-3 text-slate-600">{{ session.last_event_at|relative_time }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    <ul class="sessions-list" aria-label="Active sessions">
+      {% for session in sessions %}
+        <li class="session-row">
+          <div class="broadcast-meta">
+            <span class="pill pill-info">{{ session.source_tool or "unknown tool" }}</span>
+            {% if session.stuck_emitted %}
+              <span class="pill pill-warn">stuck signal</span>
+            {% endif %}
+            {% if session.redaction_count %}
+              <span class="pill pill-redacted">{{ session.redaction_count }} redacted</span>
+            {% endif %}
+            <span>{{ session.last_event_at|relative_time }}</span>
+          </div>
+
+          <h2>{{ session.project_slug or "unknown project" }}</h2>
+
+          <div class="broadcast-meta">
+            <span class="persona">
+              {{ session.persona_display_name }} <span class="persona-id">#{{ session.persona_id|short_id }}</span>
+            </span>
+            <span>{{ session.account_name }}</span>
+            <span>{{ session.event_count_last_hour }} event{{ 's' if session.event_count_last_hour != 1 else '' }} in scope</span>
+          </div>
+
+          {% if not session.stuck_emitted and not session.redaction_count %}
+            <p class="broadcast-context">No stuck or redaction signal has been emitted for this active session.</p>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
   {% else %}
-    <div class="rounded-md bg-white p-6 text-sm text-slate-600 ring-1 ring-slate-200">
-      No active sessions yet.
+    <div class="empty-state">
+      <strong>No active sessions yet.</strong>
+      Start `fixlog watch` or replay a supported session log. Active sessions with harness events from the last 10 minutes will appear here.
     </div>
   {% endif %}
 {% endblock %}
