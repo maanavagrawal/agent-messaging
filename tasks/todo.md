@@ -265,7 +265,7 @@
 ## Batch Plan
 - [x] Batch 1: server device-token model/API, collector auth dependencies, `fixlog connect`, local config loading, project allowlist filtering, and tests.
 - [x] Batch 2: dashboard device/connect page and one-copy repo connect command.
-- [ ] Batch 3: hosted install script that installs/runs the lightweight collector without cloning the full repo manually.
+- [x] Batch 3: hosted install script that installs/runs the lightweight collector without cloning the full repo manually.
 - [ ] Batch 4: optional background service install via LaunchAgent on macOS.
 - [ ] Batch 5: MCP surface for active fixlog search/query flows, after passive collection is easy and trustworthy.
 
@@ -301,3 +301,13 @@
   - `.venv/bin/pytest -q` passed with 198 tests and 12 skipped.
   - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
   - Local HTTP smoke against `http://127.0.0.1:8097/settings/devices` confirmed login, page render, and token creation command output.
+
+## Batch 3 Review Notes
+- Added public `/install.sh`, gated out of dashboard auth so a fresh laptop can fetch the installer before it has any fixlog credentials configured.
+- The installer creates `~/.fixlog/collector/.venv`, installs the collector package from `FIXLOG_COLLECTOR_PACKAGE_URL`, symlinks `~/.fixlog/bin/fixlog`, runs `fixlog connect` against the repo where the script was invoked, and runs `fixlog doctor`.
+- The dashboard's one-time token command now uses the installer: `curl -fsSL .../install.sh | bash -s -- --token flxdt_...`.
+- Added `FIXLOG_COLLECTOR_PACKAGE_URL` to config and docs; default points at the GitHub `main` branch for the pilot.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_install_script.py tests/test_web_views.py tests/test_production_auth.py tests/test_device_tokens.py tests/harness/test_cli.py -q` passed with 36 tests.
+  - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
+  - `.venv/bin/pytest -q` passed with 201 tests and 12 skipped.

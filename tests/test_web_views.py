@@ -178,7 +178,8 @@ def test_device_settings_page_creates_token_once(
 
     assert created.status_code == 200
     assert "Jason MacBook Pro token created." in created.text
-    assert "fixlog connect --url" in created.text
+    assert "curl -fsSL" in created.text
+    assert "/install.sh | bash -s --" in created.text
     assert f"--token {DEVICE_TOKEN_PREFIX}" in created.text
 
     device_token = db_session.scalar(

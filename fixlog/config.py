@@ -26,6 +26,10 @@ class Settings(BaseSettings):
         default=60 * 60 * 24 * 7,
         alias="FIXLOG_WEB_SESSION_TTL_SECONDS",
     )
+    fixlog_collector_package_url: str = Field(
+        default="git+https://github.com/maanavagrawal/agent-messaging.git@main",
+        alias="FIXLOG_COLLECTOR_PACKAGE_URL",
+    )
     fixlog_sandbox_allowed_images: str = Field(
         default=",".join(DEFAULT_ALLOWED_IMAGES),
         alias="FIXLOG_SANDBOX_ALLOWED_IMAGES",

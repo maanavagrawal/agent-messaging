@@ -75,6 +75,7 @@ Required environment variables:
 - `FIXLOG_AUTH_REQUIRED`
 - `FIXLOG_WEB_SECRET_KEY`
 - `FIXLOG_WEB_COOKIE_SECURE`
+- `FIXLOG_COLLECTOR_PACKAGE_URL`, optional Git/pip URL for the collector installer
 
 Harness environment variables:
 
@@ -142,6 +143,7 @@ FIXLOG_ACCOUNT_2_TOKEN=<long random token for cofounder>
 FIXLOG_AUTH_REQUIRED=true
 FIXLOG_WEB_SECRET_KEY=<long random cookie signing secret>
 FIXLOG_WEB_COOKIE_SECURE=true
+FIXLOG_COLLECTOR_PACKAGE_URL=git+https://github.com/maanavagrawal/agent-messaging.git@main
 FIXLOG_VERIFIER_ENABLED=false
 ```
 
@@ -159,8 +161,10 @@ Create a collector token from the dashboard:
 1. Open `https://<your-railway-domain>/settings/devices`.
 2. Sign in with your account token if prompted.
 3. Create a device token.
-4. Copy the one-time `fixlog connect ...` command and run it from the repo
-   you want to watch.
+4. Copy the one-time install command and run it from the repo you want to
+   watch. The installer creates `~/.fixlog/collector/.venv`, installs the
+   `fixlog` CLI, writes `~/.fixlog/config.toml`, and allowlists the current
+   repo.
 
 For scripts or recovery, the same token can be created through the API:
 
@@ -179,18 +183,16 @@ Local watcher setup for you:
 
 ```bash
 cd /path/to/repo-you-want-to-watch
-fixlog connect --url https://<your-railway-domain> --token <flxdt-device-token>
-fixlog doctor
-fixlog watch
+curl -fsSL https://<your-railway-domain>/install.sh | bash -s -- --token <flxdt-device-token>
+~/.fixlog/bin/fixlog watch
 ```
 
 Local watcher setup for your cofounder:
 
 ```bash
 cd /path/to/repo-your-cofounder-wants-to-watch
-fixlog connect --url https://<your-railway-domain> --token <cofounder-flxdt-device-token>
-fixlog doctor
-fixlog watch
+curl -fsSL https://<your-railway-domain>/install.sh | bash -s -- --token <cofounder-flxdt-device-token>
+~/.fixlog/bin/fixlog watch
 ```
 
 `fixlog connect` writes `~/.fixlog/config.toml`, detects the current git root,

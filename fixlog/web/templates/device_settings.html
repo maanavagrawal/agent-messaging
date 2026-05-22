@@ -13,7 +13,7 @@
     <section class="notice notice-success">
       <strong>{{ created_name }} token created.</strong>
       <p>This token is shown once. Run this from the repo you want to connect:</p>
-      <pre class="code-block"><code>fixlog connect --url {{ public_url }} --token {{ created_token }}</code></pre>
+      <pre class="code-block"><code>curl -fsSL {{ public_url }}/install.sh | bash -s -- --token {{ created_token }}</code></pre>
     </section>
   {% endif %}
 

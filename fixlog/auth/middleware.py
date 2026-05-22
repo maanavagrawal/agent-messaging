@@ -12,6 +12,7 @@ from fixlog.db.session import SessionLocal
 
 PUBLIC_PATHS = (
     "/healthz",
+    "/install.sh",
     "/login",
     "/static/",
     "/favicon.ico",

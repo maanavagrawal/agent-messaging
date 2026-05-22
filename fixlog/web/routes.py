@@ -6,7 +6,13 @@ from urllib.parse import parse_qs
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import (
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session, joinedload
@@ -51,6 +57,7 @@ from fixlog.schemas.session_event import (
     SessionEventListResponse,
     SessionEventRead,
 )
+from fixlog.web.install_script import build_collector_install_script
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="fixlog/web/templates")
@@ -147,6 +154,17 @@ def logout() -> Response:
     response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(WEB_SESSION_COOKIE)
     return response
+
+
+@router.get("/install.sh", response_class=PlainTextResponse)
+def collector_install_script(request: Request) -> PlainTextResponse:
+    settings = get_settings()
+    public_url = settings.fixlog_public_url or str(request.base_url).rstrip("/")
+    script = build_collector_install_script(
+        base_url=public_url,
+        package_url=settings.fixlog_collector_package_url,
+    )
+    return PlainTextResponse(script, media_type="text/x-shellscript")
 
 
 @router.get("/", response_class=HTMLResponse)

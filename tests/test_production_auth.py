@@ -32,6 +32,17 @@ def test_healthz_is_public_when_auth_required(
     assert response.json()["ok"] is True
 
 
+def test_install_script_is_public_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get("/install.sh")
+
+    assert response.status_code == 200
+    assert "text/x-shellscript" in response.headers["content-type"]
+    assert "fixlog collector installed and connected" in response.text
+
+
 def test_auth_required_requires_web_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FIXLOG_AUTH_REQUIRED", "true")
     monkeypatch.delenv("FIXLOG_WEB_SECRET_KEY", raising=False)
