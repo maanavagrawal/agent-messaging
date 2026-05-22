@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc, func, or_, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from fixlog.api.feed import build_feed
 from fixlog.api.sessions import build_active_sessions
@@ -20,16 +21,24 @@ from fixlog.api.shared import (
     verification_counts,
     with_entry_summary_options,
 )
+from fixlog.auth.deps import account_from_authorization, session_from_header
 from fixlog.db.models import (
+    AgentPersona,
+    AgentSession,
     Entry,
     EntryAlsoMatch,
     ErrorSignature,
     Question,
     QuestionStatus,
+    SessionEvent,
 )
 from fixlog.db.session import get_db
 from fixlog.normalizer.python import normalize_python_error
 from fixlog.schemas.search import SearchResponse
+from fixlog.schemas.session_event import (
+    SessionEventListResponse,
+    SessionEventRead,
+)
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="fixlog/web/templates")
@@ -115,6 +124,58 @@ def active_sessions_page(request: Request, db: Session = Depends(get_db)) -> HTM
     )
 
 
+@router.get("/sessions/{session_id}/events/view", response_class=Response)
+def session_events_page(
+    session_id: UUID,
+    request: Request,
+    limit: int = 50,
+    offset: int = 0,
+    kind: str | None = None,
+    authorization: str | None = Header(default=None),
+    x_fixlog_session_id: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> Response:
+    account = account_from_authorization(authorization, db)
+    session = session_from_header(account, x_fixlog_session_id, db)
+    if session.id != session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="URL session_id does not match X-Fixlog-Session-Id",
+        )
+    events = _session_events(db, session_id, limit=limit, offset=offset, kind=kind)
+    if not _wants_html(request):
+        payload = SessionEventListResponse(
+            items=[SessionEventRead.model_validate(event) for event in events],
+            limit=min(max(limit, 1), 200),
+            offset=offset,
+        )
+        return JSONResponse(payload.model_dump(mode="json"))
+
+    loaded_session = db.scalar(
+        select(AgentSession)
+        .options(joinedload(AgentSession.persona).joinedload(AgentPersona.account))
+        .where(AgentSession.id == session_id)
+    )
+    if loaded_session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    rows = [
+        {
+            "event": event,
+            "payload_json": json.dumps(
+                event.payload, indent=2, sort_keys=True, default=str
+            ),
+        }
+        for event in events
+    ]
+    return templates.TemplateResponse(
+        request,
+        "session_events.html",
+        {"session": loaded_session, "events": rows},
+    )
+
+
 @router.get("/search/errors", response_class=HTMLResponse)
 def error_search_page(
     request: Request,
@@ -168,6 +229,26 @@ def question_detail_page(
 def _wants_html(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "text/html" in accept and "application/json" not in accept
+
+
+def _session_events(
+    db: Session,
+    session_id: UUID,
+    limit: int,
+    offset: int,
+    kind: str | None,
+) -> list[SessionEvent]:
+    capped_limit = min(max(limit, 1), 200)
+    stmt = (
+        select(SessionEvent)
+        .where(SessionEvent.session_id == session_id)
+        .order_by(desc(SessionEvent.ts))
+        .offset(offset)
+        .limit(capped_limit)
+    )
+    if kind is not None:
+        stmt = stmt.where(SessionEvent.kind == kind)
+    return list(db.scalars(stmt).all())
 
 
 WEB_SEARCH_LIMIT = 25

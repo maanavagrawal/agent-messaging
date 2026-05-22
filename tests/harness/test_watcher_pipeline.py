@@ -1,12 +1,20 @@
 from __future__ import annotations
 
+import logging
+import sys
 from datetime import datetime
 from pathlib import Path
 
-from fixlog_harness.models import NormalizedEvent, SessionMapping
+from fixlog_harness.models import CandidateEntry, NormalizedEvent, SessionMapping
 from fixlog_harness.parsers.claude_code import ClaudeCodeLogParser
 from fixlog_harness.stuck_detector import StuckDetector
-from fixlog_harness.watcher import HarnessPipeline, SessionMapStore, discover_recent_session_files
+from fixlog_harness.watcher import (
+    HarnessPipeline,
+    SessionMapStore,
+    _observer_class,
+    _process_event_from_tail,
+    discover_recent_session_files,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "claude_code"
 
@@ -49,6 +57,34 @@ class FakeHarvester:
         return None
 
 
+class AutoSubmitHarvester(FakeHarvester):
+    def __init__(self) -> None:
+        super().__init__()
+        self.settings = type("Settings", (), {"auto_submit_harvests": True, "quiet_seconds": 1})()
+
+    def harvest(
+        self, events: list[NormalizedEvent], fixlog_session_id: str | None = None
+    ) -> CandidateEntry:
+        self.calls.append((events, fixlog_session_id))
+        return CandidateEntry(
+            source_tool="claude_code",
+            source_session_id="source",
+            fixlog_session_id=fixlog_session_id,
+            cwd="/tmp/project",
+            project_slug="project",
+            git_commit=None,
+            error_signature="ValueError: broken",
+            raw_error_text="ValueError: broken",
+            failing_command="python app.py",
+            verification_command="python app.py",
+            fix_diff="--- a/app.py\n+++ b/app.py\n@@ -1 +1 @@\n-broken\n+fixed\n",
+            diagnosis="Initialize the value.",
+            reproduction_setup="",
+            reproduction_trigger="python app.py",
+            reproduction_verify="python app.py",
+        )
+
+
 def test_replay_file_posts_redacted_events_and_session_end(tmp_path: Path) -> None:
     client = FakeClient()
     harvester = FakeHarvester()
@@ -66,6 +102,22 @@ def test_replay_file_posts_redacted_events_and_session_end(tmp_path: Path) -> No
     assert "sk-proj" not in client.events[-2][1].model_dump_json()
     assert harvester.calls
     assert not (tmp_path / "map.json").read_text().strip() == ""
+
+
+def test_replay_file_auto_submits_when_enabled(tmp_path: Path) -> None:
+    client = FakeClient()
+    harvester = AutoSubmitHarvester()
+    pipeline = HarnessPipeline(
+        client=client,
+        session_store=SessionMapStore(tmp_path / "map.json"),
+        detector=StuckDetector(),
+        harvester=harvester,
+    )
+
+    pipeline.replay_file(FIXTURES / "env_leak_redaction.jsonl", ClaudeCodeLogParser())
+
+    assert harvester.calls
+    assert len(client.submitted) == 1
 
 
 def test_session_map_store_round_trips(tmp_path: Path) -> None:
@@ -95,3 +147,75 @@ def test_discovers_only_recent_jsonl_files(tmp_path: Path) -> None:
 
     os.utime(old, (time.time() - 900, time.time() - 900))
     assert discover_recent_session_files(tmp_path, recent_seconds=60) == [recent]
+
+
+def test_observer_class_uses_polling_on_macos(monkeypatch) -> None:
+    from watchdog.observers.polling import PollingObserver
+
+    monkeypatch.setattr(sys, "platform", "darwin")
+    assert _observer_class() is PollingObserver
+
+
+def test_process_event_from_tail_logs_forwarding_failure(
+    tmp_path: Path, caplog, monkeypatch
+) -> None:
+    class FailingPipeline:
+        def process_event(self, event: NormalizedEvent) -> SessionMapping:
+            raise RuntimeError("network blocked")
+
+    event = NormalizedEvent(
+        source_tool="claude_code",
+        source_session_id="source",
+        source_event_id="event",
+        ts=datetime.fromisoformat("2026-04-27T01:00:00+00:00"),
+        kind="agent_message",
+        text="hello",
+    )
+
+    monkeypatch.setattr("fixlog_harness.watcher.time.sleep", lambda _seconds: None)
+    caplog.set_level(logging.ERROR)
+    result = _process_event_from_tail(
+        tmp_path / "session.jsonl", FailingPipeline(), event  # type: ignore[arg-type]
+    )
+
+    assert result is None
+    assert "failed to forward tailed event" in caplog.text
+    assert "network blocked" in caplog.text
+
+
+def test_process_event_from_tail_retries_transient_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    event = NormalizedEvent(
+        source_tool="claude_code",
+        source_session_id="source",
+        source_event_id="event",
+        ts=datetime.fromisoformat("2026-04-27T01:00:00+00:00"),
+        kind="agent_message",
+        text="hello",
+    )
+
+    class FlakyPipeline:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def process_event(self, event: NormalizedEvent) -> SessionMapping:
+            self.calls += 1
+            if self.calls == 1:
+                raise RuntimeError("temporary network blip")
+            return SessionMapping(
+                fixlog_session_id="fixlog-session",
+                fixlog_persona_id="persona",
+                started_at=event.ts,
+            )
+
+    pipeline = FlakyPipeline()
+    monkeypatch.setattr("fixlog_harness.watcher.time.sleep", lambda _seconds: None)
+
+    result = _process_event_from_tail(
+        tmp_path / "session.jsonl", pipeline, event  # type: ignore[arg-type]
+    )
+
+    assert result is not None
+    assert result.fixlog_session_id == "fixlog-session"
+    assert pipeline.calls == 2

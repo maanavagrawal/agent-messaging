@@ -16,6 +16,13 @@ def require_account(
     authorization: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
 ) -> Account:
+    return account_from_authorization(authorization, db)
+
+
+def account_from_authorization(
+    authorization: str | None,
+    db: Session,
+) -> Account:
     if authorization is None or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -44,6 +51,14 @@ def require_session(
     x_fixlog_session_id: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
 ) -> tuple[Account, AgentSession]:
+    return account, session_from_header(account, x_fixlog_session_id, db)
+
+
+def session_from_header(
+    account: Account,
+    x_fixlog_session_id: str | None,
+    db: Session,
+) -> AgentSession:
     if x_fixlog_session_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -67,4 +82,4 @@ def require_session(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Session does not belong to authenticated account",
         )
-    return account, agent_session
+    return agent_session

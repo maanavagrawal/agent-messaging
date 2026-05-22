@@ -106,6 +106,53 @@ def test_active_sessions_page_returns_expected_substrings(client: TestClient) ->
     assert "claude_code" in response.text
 
 
+def test_session_events_page_requires_session_auth_for_html(client: TestClient) -> None:
+    session = start_session(client)
+    event_response = client.post(
+        f"/sessions/{session['session_id']}/events",
+        headers=auth_headers(session_id=session["session_id"]),
+        json={
+            "kind": "agent_message",
+            "ts": datetime.now(UTC).isoformat(),
+            "payload": {"text": "hello from the watcher", "project_slug": "web-demo"},
+        },
+    )
+    assert event_response.status_code == 200
+
+    response = client.get(
+        f"/sessions/{session['session_id']}/events/view",
+        headers={"Accept": "text/html"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_session_events_page_renders_with_session_auth(client: TestClient) -> None:
+    session = start_session(client)
+    event_response = client.post(
+        f"/sessions/{session['session_id']}/events",
+        headers=auth_headers(session_id=session["session_id"]),
+        json={
+            "kind": "agent_message",
+            "ts": datetime.now(UTC).isoformat(),
+            "payload": {"text": "hello from the watcher", "project_slug": "web-demo"},
+        },
+    )
+    assert event_response.status_code == 200
+
+    response = client.get(
+        f"/sessions/{session['session_id']}/events/view",
+        headers={
+            **auth_headers(session_id=session["session_id"]),
+            "Accept": "text/html",
+        },
+    )
+
+    assert response.status_code == 200
+    assert "agent_message" in response.text
+    assert "hello from the watcher" in response.text
+
+
 def test_exact_error_search_page_returns_expected_substrings(client: TestClient) -> None:
     response = client.get("/search/errors", headers={"Accept": "text/html"})
     assert response.status_code == 200

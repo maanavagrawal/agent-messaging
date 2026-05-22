@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import threading
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from fixlog_harness.config import HarnessSettings
 from fixlog_harness.models import (
@@ -156,24 +157,33 @@ def discover_recent_session_files(projects_dir: Path, recent_seconds: int) -> li
 def watch(settings: HarnessSettings, pipeline: HarnessPipeline) -> None:
     try:
         from watchdog.events import FileSystemEvent, FileSystemEventHandler
-        from watchdog.observers import Observer
     except ModuleNotFoundError as exc:  # pragma: no cover - dependency environment
         raise RuntimeError("watchdog package is required for watch mode") from exc
 
     class Handler(FileSystemEventHandler):
         def on_created(self, event: FileSystemEvent) -> None:
             if not event.is_directory and str(event.src_path).endswith(".jsonl"):
+                logger.info("tailing new session file path=%s", event.src_path)
                 threading.Thread(
                     target=tail_file,
                     args=(Path(str(event.src_path)), pipeline),
                     daemon=True,
                 ).start()
 
-    for path in discover_recent_session_files(
+    recent_paths = discover_recent_session_files(
         settings.claude_projects_dir, settings.recent_seconds
-    ):
+    )
+    logger.info(
+        "watching Claude Code sessions dir=%s pattern=**/*.jsonl recent_files=%s",
+        settings.claude_projects_dir,
+        len(recent_paths),
+    )
+    for path in recent_paths:
+        logger.info("tailing recent session file path=%s", path)
         threading.Thread(target=tail_file, args=(path, pipeline), daemon=True).start()
-    observer = Observer()
+    observer_class = _observer_class()
+    logger.info("using watchdog observer class=%s", observer_class.__name__)
+    observer = observer_class()
     observer.schedule(Handler(), str(settings.claude_projects_dir), recursive=True)
     observer.start()
     try:
@@ -195,7 +205,8 @@ def tail_file(path: Path, pipeline: HarnessPipeline) -> None:
             if line:
                 last_change = datetime.now(UTC)
                 for event in parser.parse_line(line):
-                    pipeline.process_event(event)
+                    if _process_event_from_tail(path, pipeline, event) is None:
+                        return
                     last_event = event
                 continue
             if datetime.now(UTC) - last_change > timedelta(
@@ -212,7 +223,9 @@ def tail_file(path: Path, pipeline: HarnessPipeline) -> None:
                             "tool_result": None,
                         }
                     )
-                    mapping = pipeline.process_event(end_event)
+                    mapping = _process_event_from_tail(path, pipeline, end_event)
+                    if mapping is None:
+                        return
                     key = _mapping_key(
                         end_event.source_tool, end_event.source_session_id
                     )
@@ -231,6 +244,44 @@ def tail_file(path: Path, pipeline: HarnessPipeline) -> None:
 
 def _mapping_key(source_tool: str, source_session_id: str) -> str:
     return f"{source_tool}:{source_session_id}"
+
+
+def _observer_class() -> type[Any]:
+    if sys.platform == "darwin":
+        from watchdog.observers.polling import PollingObserver
+
+        return PollingObserver
+    from watchdog.observers import Observer
+
+    return Observer
+
+
+def _process_event_from_tail(
+    path: Path, pipeline: HarnessPipeline, event: NormalizedEvent
+) -> SessionMapping | None:
+    attempts = 3
+    for attempt in range(1, attempts + 1):
+        try:
+            return pipeline.process_event(event)
+        except Exception as exc:  # pragma: no cover - exercised via tests with fake client
+            if attempt == attempts:
+                logger.error(
+                    "failed to forward tailed event path=%s kind=%s attempts=%s error=%s",
+                    path,
+                    event.kind,
+                    attempt,
+                    exc,
+                )
+                return None
+            logger.warning(
+                "retrying tailed event forward path=%s kind=%s attempt=%s error=%s",
+                path,
+                event.kind,
+                attempt,
+                exc,
+            )
+            time.sleep(0.5)
+    return None
 
 
 def _auto_submit_enabled(harvester: HarvesterProtocol) -> bool:

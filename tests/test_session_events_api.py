@@ -73,6 +73,17 @@ def test_create_session_event_rejects_missing_session_header(client: TestClient)
     assert response.status_code == 401
 
 
+def test_list_session_events_rejects_missing_session_header_for_json(
+    client: TestClient,
+) -> None:
+    session = start_session(client)
+    response = client.get(
+        f"/sessions/{session['session_id']}/events",
+        headers={"Accept": "application/json"},
+    )
+    assert response.status_code == 401
+
+
 def test_active_sessions_returns_recent_aggregate(client: TestClient) -> None:
     session = start_session(client)
     for index, kind in enumerate(["tool_result", "stuck_emitted"]):

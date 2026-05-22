@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}session events · fixlog{% endblock %}
+{% block content %}
+  <section class="page-head">
+    <span class="page-kicker">Agent session</span>
+    <h1 class="page-title">{{ session.source_tool or "agent" }} events for {{ session.source_tool_session_id or session.id }}</h1>
+    <p class="page-copy">
+      {{ session.persona.display_name }} · {{ session.persona.account.human_name }} · {{ events|length }} event{{ 's' if events|length != 1 else '' }} shown.
+    </p>
+  </section>
+
+  {% if events %}
+    <ul class="events-list" aria-label="Session events">
+      {% for row in events %}
+        {% set event = row.event %}
+        <li class="event-row">
+          <div class="broadcast-meta">
+            <span class="pill pill-info">{{ event.kind }}</span>
+            {% if event.payload.get("redacted") %}
+              <span class="pill pill-redacted">redacted</span>
+            {% endif %}
+            <span>{{ event.ts|relative_time }}</span>
+            <span>#{{ event.id|short_id }}</span>
+          </div>
+          <pre class="code-block event-payload"><code>{{ row.payload_json }}</code></pre>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      <strong>No events found for this session.</strong>
+      The watcher may not have forwarded any events yet, or the selected filter returned no rows.
+    </div>
+  {% endif %}
+{% endblock %}
