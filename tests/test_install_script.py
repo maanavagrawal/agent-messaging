@@ -21,6 +21,8 @@ def test_collector_install_script_contains_expected_flow() -> None:
     assert "\"$FIXLOG_BIN_DIR/fixlog\" connect" in script
     assert "--project \"$PROJECT\"" in script
     assert "--token flxdt_..." in script
+    assert "--background" in script
+    assert "\"$FIXLOG_BIN_DIR/fixlog\" service install --start" in script
 
 
 def test_collector_install_script_is_valid_bash() -> None:

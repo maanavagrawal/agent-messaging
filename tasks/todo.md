@@ -266,7 +266,7 @@
 - [x] Batch 1: server device-token model/API, collector auth dependencies, `fixlog connect`, local config loading, project allowlist filtering, and tests.
 - [x] Batch 2: dashboard device/connect page and one-copy repo connect command.
 - [x] Batch 3: hosted install script that installs/runs the lightweight collector without cloning the full repo manually.
-- [ ] Batch 4: optional background service install via LaunchAgent on macOS.
+- [x] Batch 4: optional background service install via LaunchAgent on macOS.
 - [ ] Batch 5: MCP surface for active fixlog search/query flows, after passive collection is easy and trustworthy.
 
 ## Batch 1 Test Plan
@@ -311,3 +311,13 @@
   - `.venv/bin/pytest tests/test_install_script.py tests/test_web_views.py tests/test_production_auth.py tests/test_device_tokens.py tests/harness/test_cli.py -q` passed with 36 tests.
   - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
   - `.venv/bin/pytest -q` passed with 201 tests and 12 skipped.
+
+## Batch 4 Review Notes
+- Added `fixlog service install --start`, `fixlog service status`, and `fixlog service uninstall` for macOS LaunchAgent management.
+- The LaunchAgent runs the installed `fixlog watch` binary, starts at login/load, keeps the watcher alive, and writes logs to `~/.fixlog/logs/collector.out.log` and `collector.err.log`.
+- Added `fixlog service install --dry-run` for inspectable plist output and tests.
+- The hosted installer supports `--background`, which installs and starts the LaunchAgent after `fixlog connect` and `fixlog doctor`.
+- Verification completed:
+  - `.venv/bin/pytest tests/harness/test_service.py tests/test_install_script.py tests/harness/test_cli.py -q` passed with 7 tests.
+  - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
+  - `.venv/bin/pytest -q` passed with 203 tests and 12 skipped.

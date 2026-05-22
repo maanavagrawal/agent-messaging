@@ -19,6 +19,7 @@ FIXLOG_BIN_DIR="${{FIXLOG_BIN_DIR:-$HOME/.fixlog/bin}}"
 TOKEN=""
 PROJECT="$PWD"
 RUN_DOCTOR=1
+INSTALL_SERVICE=0
 
 usage() {{
   cat <<'USAGE'
@@ -30,6 +31,7 @@ Options:
   --url <url>              Override the fixlog server URL embedded in the script.
   --project <path>         Repo root to allowlist. Defaults to the current directory.
   --install-dir <path>     Collector install directory. Defaults to ~/.fixlog/collector.
+  --background             Install and start a macOS LaunchAgent after connecting.
   --skip-doctor            Skip the post-install connectivity check.
   -h, --help               Show this help.
 USAGE
@@ -64,6 +66,10 @@ while [ "$#" -gt 0 ]; do
       need_value "$@"
       FIXLOG_INSTALL_DIR="$2"
       shift 2
+      ;;
+    --background)
+      INSTALL_SERVICE=1
+      shift
       ;;
     --skip-doctor)
       RUN_DOCTOR=0
@@ -107,12 +113,19 @@ if [ "$RUN_DOCTOR" = "1" ]; then
   "$FIXLOG_BIN_DIR/fixlog" doctor
 fi
 
+if [ "$INSTALL_SERVICE" = "1" ]; then
+  "$FIXLOG_BIN_DIR/fixlog" service install --start
+fi
+
 cat <<DONE
 
 fixlog collector installed and connected.
 
 Run this from any terminal to start live capture:
   $FIXLOG_BIN_DIR/fixlog watch
+
+Optional background service:
+  $FIXLOG_BIN_DIR/fixlog service install --start
 
 Optional PATH setup:
   export PATH="$FIXLOG_BIN_DIR:$PATH"

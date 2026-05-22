@@ -195,6 +195,19 @@ curl -fsSL https://<your-railway-domain>/install.sh | bash -s -- --token <cofoun
 ~/.fixlog/bin/fixlog watch
 ```
 
+On macOS, install the watcher as a background LaunchAgent after connecting:
+
+```bash
+~/.fixlog/bin/fixlog service install --start
+~/.fixlog/bin/fixlog service status
+```
+
+Or do it during install:
+
+```bash
+curl -fsSL https://<your-railway-domain>/install.sh | bash -s -- --token <flxdt-device-token> --background
+```
+
 `fixlog connect` writes `~/.fixlog/config.toml`, detects the current git root,
 and adds that repo to the local allowlist. The watcher still tails Claude Code's
 global `~/.claude/projects` logs, but only forwards events whose `cwd` is under

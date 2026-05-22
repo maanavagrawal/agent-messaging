@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import subprocess
+import sys
 from pathlib import Path
 
 import httpx
@@ -11,6 +13,14 @@ from fixlog_harness.client import FixlogClient
 from fixlog_harness.config import HarnessSettings, get_harness_settings
 from fixlog_harness.harvester import Harvester, load_pending_harvests
 from fixlog_harness.local_config import detect_project_root, write_local_config
+from fixlog_harness.service import (
+    default_log_dir,
+    install_launch_agent,
+    print_launch_agent_status,
+    render_launch_agent_plist,
+    resolve_fixlog_bin,
+    uninstall_launch_agent,
+)
 from fixlog_harness.stuck_detector import StuckDetector
 from fixlog_harness.watcher import HarnessPipeline, SessionMapStore, watch
 
@@ -24,6 +34,18 @@ def main(argv: list[str] | None = None) -> int:
     connect.add_argument("--url", required=True)
     connect.add_argument("--token", required=True)
     connect.add_argument("--project", type=Path)
+    service = subcommands.add_parser("service")
+    service_subcommands = service.add_subparsers(
+        dest="service_command",
+        required=True,
+    )
+    service_install = service_subcommands.add_parser("install")
+    service_install.add_argument("--start", action="store_true")
+    service_install.add_argument("--dry-run", action="store_true")
+    service_install.add_argument("--fixlog-bin", type=Path)
+    service_install.add_argument("--log-dir", type=Path)
+    service_subcommands.add_parser("uninstall")
+    service_subcommands.add_parser("status")
     replay = subcommands.add_parser("replay")
     replay.add_argument("path", type=Path)
     harvest = subcommands.add_parser("harvest")
@@ -35,11 +57,14 @@ def main(argv: list[str] | None = None) -> int:
     discard.add_argument("id")
     args = parser.parse_args(argv)
 
-    settings = get_harness_settings()
     if args.command == "harvest":
         return _harvest_command(args.harvest_command, args.id if hasattr(args, "id") else None)
     if args.command == "connect":
         return _connect(args.url, args.token, args.project)
+    if args.command == "service":
+        return _service_command(args)
+
+    settings = get_harness_settings()
     if args.command == "doctor":
         return _doctor(settings)
 
@@ -159,6 +184,50 @@ def _connect(base_url: str, token: str, project: Path | None) -> int:
     print(f"allowed_project={project_root}")
     print(f"config={config_path}")
     return 0
+
+
+def _service_command(args: argparse.Namespace) -> int:
+    try:
+        if args.service_command == "install":
+            fixlog_bin = resolve_fixlog_bin(args.fixlog_bin)
+            log_dir = (
+                args.log_dir.expanduser().resolve(strict=False)
+                if args.log_dir is not None
+                else default_log_dir()
+            )
+            if args.dry_run:
+                print(render_launch_agent_plist(fixlog_bin=fixlog_bin, log_dir=log_dir))
+                return 0
+            plist_path = install_launch_agent(
+                fixlog_bin=fixlog_bin,
+                log_dir=log_dir,
+                start=args.start,
+            )
+            print(f"service_plist={plist_path}")
+            print(f"service_logs={log_dir}")
+            if args.start:
+                print("service_status=started")
+            else:
+                print("service_status=installed")
+                print("start_hint=fixlog service install --start")
+            return 0
+        if args.service_command == "uninstall":
+            plist_path = uninstall_launch_agent()
+            print(f"service_removed={plist_path}")
+            return 0
+        if args.service_command == "status":
+            return print_launch_agent_status()
+    except RuntimeError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    except subprocess.CalledProcessError as exc:
+        print(f"launchctl failed with exit_code={exc.returncode}", file=sys.stderr)
+        if exc.stdout:
+            print(exc.stdout, end="", file=sys.stderr)
+        if exc.stderr:
+            print(exc.stderr, end="", file=sys.stderr)
+        return exc.returncode or 1
+    return 1
 
 
 if __name__ == "__main__":  # pragma: no cover
