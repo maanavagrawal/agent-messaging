@@ -5,6 +5,20 @@ from fastapi.testclient import TestClient
 from conftest import auth_headers, create_entry, entry_payload, start_session
 
 
+class FakeVerifierWorker:
+    def __init__(self, enqueue_result: bool = True) -> None:
+        self.enqueue_result = enqueue_result
+        self.enqueued: list[str] = []
+        self.overflowed: list[str] = []
+
+    async def enqueue(self, entry_id) -> bool:
+        self.enqueued.append(str(entry_id))
+        return self.enqueue_result
+
+    def write_queue_overflow(self, entry_id) -> None:
+        self.overflowed.append(str(entry_id))
+
+
 def test_create_list_and_get_entry(client: TestClient) -> None:
     session = start_session(client)
     entry = create_entry(client, session["session_id"])
@@ -18,6 +32,30 @@ def test_create_list_and_get_entry(client: TestClient) -> None:
     )
     assert detail_response.status_code == 200
     assert detail_response.json()["diagnosis"] == "The value is not initialized."
+
+
+def test_create_entry_enqueues_auto_verification(client: TestClient) -> None:
+    worker = FakeVerifierWorker()
+    client.app.state.verifier_worker = worker
+    session = start_session(client)
+
+    entry = create_entry(client, session["session_id"])
+
+    assert worker.enqueued == [entry["id"]]
+    assert worker.overflowed == []
+
+
+def test_create_entry_writes_partial_when_verification_queue_overflows(
+    client: TestClient,
+) -> None:
+    worker = FakeVerifierWorker(enqueue_result=False)
+    client.app.state.verifier_worker = worker
+    session = start_session(client)
+
+    entry = create_entry(client, session["session_id"])
+
+    assert worker.enqueued == [entry["id"]]
+    assert worker.overflowed == [entry["id"]]
 
 
 def test_create_entry_links_also_matches(client: TestClient) -> None:

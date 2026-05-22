@@ -135,3 +135,45 @@ def test_harvester_returns_none_without_diff(tmp_path: Path) -> None:
         )
     ]
     assert Harvester(settings, FakePromptClient()).harvest(events) is None
+
+
+def test_harvester_does_not_write_pending_when_auto_submit_enabled(
+    tmp_path: Path,
+) -> None:
+    pending = tmp_path / "pending"
+    cwd = tmp_path / "repo"
+    cwd.mkdir()
+    _git_repo(cwd)
+    settings = HarnessSettings(
+        FIXLOG_PENDING_HARVEST_DIR=pending,
+        FIXLOG_API_TOKEN="token",
+        FIXLOG_AUTO_SUBMIT_HARVESTS=True,
+    )
+
+    events = [
+        _event(
+            1,
+            cwd,
+            tool_call=ToolCall(
+                tool_name="Bash",
+                tool_call_id="toolu_fail",
+                args={"command": "pytest tests/test_app.py -q"},
+            ),
+        ),
+        _event(
+            2,
+            cwd,
+            tool_result=ToolResult(
+                tool_call_id="toolu_fail",
+                content="FAILED tests/test_app.py::test_run - KeyError: 'username'",
+                is_error=True,
+                error_signature="abc123def4567890",
+                exit_code=1,
+            ),
+        ),
+    ]
+    candidate = Harvester(settings, FakePromptClient()).harvest(events, "fixlog-session")
+
+    assert candidate is not None
+    assert candidate.pending_path is None
+    assert not pending.exists()

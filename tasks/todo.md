@@ -183,3 +183,46 @@
   - `.venv/bin/alembic upgrade head` against `/tmp/fixlog-phase3-alembic.sqlite3`.
   - `.venv/bin/python -m compileall fixlog fixlog_harness scripts tests`.
   - `scripts/dev_seed.py` ran twice against `/tmp/fixlog-phase3-seed.sqlite3`.
+
+# fixlog Phase 5 Todo
+
+## Approved Spec Amendments
+- [x] Keep the existing `Entry` schema unchanged and encode Phase 5 pilot sandbox files in `Entry.sandbox_spec` JSON.
+- [x] Defer full repo workspace tarball persistence until a later phase because no current API or model field can carry it.
+- [x] Use FastAPI lifespan wiring for the verifier worker instead of legacy startup/shutdown decorators.
+- [x] Keep the harness auto-submit flag defaulted to false; Phase 5 verifies server-side but does not change rollout posture.
+
+## Implementation Sequence
+- [x] Sandbox spec/result/config models and unit tests.
+- [x] Docker sandbox runner with security flags and Docker-gated tests.
+- [x] Verifier worker with mock-runner tests.
+- [x] FastAPI lifespan wiring, POST `/entries` enqueue, and `/sandbox/status`.
+- [x] Entry detail pending/failed verification UI.
+- [x] Auto-verification integration test.
+- [x] Harness auto-submit validation with flag enabled once, then default false.
+- [x] Manual Docker checks: passing entry, failing entry, OOM, timeout, network blocked, image whitelist, read-only rootfs, writable workspace.
+  - Docker Desktop is reachable through the user's shell; `python:3.11-slim` is pre-pulled.
+  - Server startup confirmed the verifier worker starts with the configured image whitelist.
+  - Manual results:
+    - Good entry verified as `pass`.
+    - Bad fix verified as `fail`.
+    - Memory bomb verified as `partial`.
+    - Timeout verified as `partial`.
+    - Network probe failed with `OSError: [Errno 101] Network is unreachable`.
+    - `ubuntu:22.04` was rejected with `image not in whitelist: ubuntu:22.04`.
+    - `/etc` write failed with `Read-only file system`.
+    - `/workspace` write passed and verify stdout included `can-write`.
+- [x] Browser session-events route fix after verification-log smoke.
+  - Added HTML rendering for `/sessions/{id}/events` while preserving JSON API auth semantics.
+- [x] Fixed auto-sandbox verify ordering bug found by the manual happy-path check.
+  - Root cause: fixed files were written before `reproduction_setup`, so setup commands that create baseline files could overwrite the fix before `reproduction_verify`.
+  - Fix: keep baseline files for setup, then overlay only changed/deleted fix files after setup and before verify.
+
+## Review Notes
+- The complete Phase 5 flow is intentionally in-process for the two-user pilot; Redis/Celery and distributed workers remain out of scope.
+- Dockerfile support, arbitrary images, scheduled re-verification, and persisted full workspaces are out of scope.
+- Focused verification for the browser route: `.venv/bin/pytest tests/test_web_views.py tests/test_session_events_api.py -q` passed with 16 tests.
+- Regression verification for the setup/fix ordering bug:
+  - `.venv/bin/pytest tests/test_verifier_worker.py -q` passed with 7 tests.
+  - `zsh -lic '.venv/bin/pytest tests/test_auto_verification_e2e.py -q'` passed with 2 real-Docker tests.
+  - `zsh -lic '.venv/bin/pytest -q'` passed with 170 tests and 1 skipped.

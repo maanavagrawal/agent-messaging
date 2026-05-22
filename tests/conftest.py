@@ -35,7 +35,7 @@ def seeded_accounts(db_session: Session) -> dict[str, Account]:
 
 @pytest.fixture()
 def app(db_session: Session):
-    app = create_app(seed_accounts=False)
+    app = create_app(seed_accounts=False, start_verifier=False)
 
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session

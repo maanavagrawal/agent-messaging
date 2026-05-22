@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
+import inspect
 import json
 import logging
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
@@ -70,6 +72,7 @@ def list_entries(
 
 @router.post("", response_model=EntryRead, status_code=status.HTTP_201_CREATED)
 def create_entry(
+    request: Request,
     payload: EntryCreate,
     auth: tuple[Account, AgentSession] = Depends(require_session),
     db: Session = Depends(get_db),
@@ -107,6 +110,7 @@ def create_entry(
     loaded = load_entry_or_none(db, entry.id)
     if loaded is None:
         raise RuntimeError("Created entry could not be reloaded")
+    _schedule_auto_verification(request, loaded.id)
     logger.info("entry created id=%s account=%s persona=%s", loaded.id, account.id, session.persona_id)
     return entry_read(loaded)
 
@@ -206,3 +210,26 @@ def _edit_value(value: object) -> str:
     if value is None:
         return ""
     return str(value)
+
+
+def _schedule_auto_verification(request: Request, entry_id: UUID) -> None:
+    worker = getattr(request.app.state, "verifier_worker", None)
+    if worker is None:
+        return
+    try:
+        enqueue_threadsafe = getattr(worker, "enqueue_threadsafe", None)
+        if callable(enqueue_threadsafe):
+            queued = bool(enqueue_threadsafe(entry_id))
+        else:
+            queued = _run_enqueue_for_test_worker(worker, entry_id)
+        if not queued:
+            worker.write_queue_overflow(entry_id)
+    except Exception:
+        logger.exception("failed to schedule auto sandbox verification entry=%s", entry_id)
+
+
+def _run_enqueue_for_test_worker(worker: object, entry_id: UUID) -> bool:
+    result = worker.enqueue(entry_id)  # type: ignore[attr-defined]
+    if inspect.isawaitable(result):
+        return bool(asyncio.run(result))
+    return bool(result)

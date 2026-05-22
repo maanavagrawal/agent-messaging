@@ -93,6 +93,9 @@ class Harvester:
             reproduction_trigger=failing_command,
             reproduction_verify=verification_command or failing_command,
         )
+        if self.settings.auto_submit_harvests:
+            logger.info("harvest candidate prepared for auto-submit id=%s", candidate.id)
+            return candidate
         return self.write_pending(candidate)
 
     def write_pending(self, candidate: CandidateEntry) -> CandidateEntry:

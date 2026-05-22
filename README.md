@@ -83,6 +83,14 @@ Harness environment variables:
 - `ANTHROPIC_API_KEY` for harvest prompt generation
 - `FIXLOG_AUTO_SUBMIT_HARVESTS`, default `false`
 
+Sandbox environment variables:
+
+- `FIXLOG_SANDBOX_ALLOWED_IMAGES`
+- `FIXLOG_SANDBOX_QUEUE_SIZE`
+- `FIXLOG_SANDBOX_TIMEOUT_S`
+- `FIXLOG_SANDBOX_MEMORY_MB`
+- `FIXLOG_VERIFIER_ENABLED`, default `true`
+
 ## Database
 
 Run the initial migration:
