@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}login · fixlog{% endblock %}
+{% block content %}
+  <section class="page-head">
+    <span class="page-kicker">Private pilot</span>
+    <h1 class="page-title">Sign in to fixlog.</h1>
+    <p class="page-copy">
+      Use your assigned fixlog API token. The browser session is scoped to this dashboard; local agents still use bearer tokens directly.
+    </p>
+  </section>
+
+  <form class="login-panel" method="post" action="/login">
+    <input type="hidden" name="next" value="{{ next_path }}">
+    <label class="login-field">
+      <span>API token</span>
+      <input name="token" type="password" autocomplete="current-password" required autofocus>
+    </label>
+    {% if error %}
+      <p class="form-error">{{ error }}</p>
+    {% endif %}
+    <button class="button-primary" type="submit">Sign in</button>
+  </form>
+{% endblock %}

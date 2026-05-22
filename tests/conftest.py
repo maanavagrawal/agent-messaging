@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from collections.abc import Generator
 from pathlib import Path
 from typing import Any
@@ -40,7 +41,12 @@ def app(db_session: Session):
     def override_get_db() -> Generator[Session, None, None]:
         yield db_session
 
+    @contextmanager
+    def auth_session() -> Generator[Session, None, None]:
+        yield db_session
+
     app.dependency_overrides[get_db] = override_get_db
+    app.state.session_factory = auth_session
     return app
 
 

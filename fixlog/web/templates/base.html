@@ -26,6 +26,11 @@
             <input name="error" type="search" placeholder="Paste exact error">
           </label>
         </form>
+        {% if request.url.path != "/login" %}
+          <form class="logout-form" action="/logout" method="post">
+            <button type="submit">Log out</button>
+          </form>
+        {% endif %}
       </div>
     </header>
     <main id="content" class="page-shell">

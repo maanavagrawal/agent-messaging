@@ -8,6 +8,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from fixlog.api import confirm, entries, feed, questions, sandbox, search, sessions, verifications
+from fixlog.auth.middleware import FixlogAuthMiddleware
 from fixlog.config import get_settings
 from fixlog.db.seed import seed_accounts_from_settings
 from fixlog.db.session import SessionLocal
@@ -63,8 +64,10 @@ def create_app(
     start_verifier: bool | None = None,
     verifier_worker: VerifierWorker | None = None,
 ) -> FastAPI:
+    settings = get_settings()
+    settings.validate_runtime()
     should_start_verifier = (
-        get_settings().fixlog_verifier_enabled if start_verifier is None else start_verifier
+        settings.fixlog_verifier_enabled if start_verifier is None else start_verifier
     )
     if verifier_worker is not None:
         should_start_verifier = True
@@ -72,6 +75,18 @@ def create_app(
         title="fixlog",
         lifespan=build_lifespan(seed_accounts, should_start_verifier, verifier_worker),
     )
+    app.state.session_factory = SessionLocal
+    app.add_middleware(FixlogAuthMiddleware)
+
+    @app.get("/healthz", include_in_schema=False)
+    def healthz() -> dict[str, object]:
+        settings = get_settings()
+        return {
+            "ok": True,
+            "service": "fixlog",
+            "verifier_enabled": settings.fixlog_verifier_enabled,
+        }
+
     app.mount("/static", StaticFiles(directory="fixlog/web/static"), name="static")
     app.include_router(web_routes.router)
     app.include_router(sessions.router)

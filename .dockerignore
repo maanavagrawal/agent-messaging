@@ -1,0 +1,12 @@
+.git
+.gstack
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.venv
+__pycache__
+*.pyc
+*.sqlite3
+.env
+dist
+build

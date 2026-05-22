@@ -38,6 +38,8 @@
           {% if not session.stuck_emitted and not session.redaction_count %}
             <p class="broadcast-context">No stuck or redaction signal has been emitted for this active session.</p>
           {% endif %}
+
+          <a class="detail-link session-link" href="/sessions/{{ session.session_id }}/events/view">Inspect events</a>
         </li>
       {% endfor %}
     </ul>

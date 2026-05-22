@@ -45,9 +45,8 @@ harness that replays or tails session logs into redacted SessionEvents.
 ## Not Implemented
 
 - Embedding generation or vector search.
-- Sandbox runner or Docker integration.
 - Codex/Cursor/Aider/Continue parsers.
-- Auto-querying, pulling, applying, or sandbox-verifying fixes.
+- Auto-querying, pulling, or applying fixes.
 - MCP server.
 - Confidence scoring, reputation enforcement, rate limiting.
 - Public signup or multi-user auth beyond shared bearer tokens.
@@ -68,10 +67,14 @@ Edit `.env` and replace both account tokens with long random values.
 Required environment variables:
 
 - `DATABASE_URL`
+- `FIXLOG_PUBLIC_URL`
 - `FIXLOG_ACCOUNT_1_TOKEN`
 - `FIXLOG_ACCOUNT_1_NAME`
 - `FIXLOG_ACCOUNT_2_TOKEN`
 - `FIXLOG_ACCOUNT_2_NAME`
+- `FIXLOG_AUTH_REQUIRED`
+- `FIXLOG_WEB_SECRET_KEY`
+- `FIXLOG_WEB_COOKIE_SECURE`
 
 Harness environment variables:
 
@@ -109,6 +112,68 @@ uvicorn fixlog.main:app --reload
 ```
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+Healthcheck:
+
+```bash
+curl http://127.0.0.1:8000/healthz
+```
+
+## Railway Pilot Deploy
+
+Railway runs the server/dashboard. Each developer still runs `fixlog watch`
+locally because Claude Code logs live on their laptop.
+
+Create a Railway service from this repo. The included `Dockerfile` and
+`railway.json` run migrations and start Uvicorn on Railway's `$PORT`.
+
+For a two-person SQLite pilot, attach a Railway volume mounted at `/data`, then
+set:
+
+```bash
+DATABASE_URL=sqlite:////data/fixlog.sqlite3
+FIXLOG_PUBLIC_URL=https://<your-railway-domain>
+FIXLOG_ACCOUNT_1_NAME=Maanav
+FIXLOG_ACCOUNT_1_TOKEN=<long random token for you>
+FIXLOG_ACCOUNT_2_NAME=<cofounder name>
+FIXLOG_ACCOUNT_2_TOKEN=<long random token for cofounder>
+FIXLOG_AUTH_REQUIRED=true
+FIXLOG_WEB_SECRET_KEY=<long random cookie signing secret>
+FIXLOG_WEB_COOKIE_SECURE=true
+FIXLOG_VERIFIER_ENABLED=false
+```
+
+Keep `FIXLOG_VERIFIER_ENABLED=false` on the Railway web service unless you add a
+separate Docker-capable verifier worker. Railway is a good home for the API/UI,
+but the sandbox runner needs access to a Docker daemon and should not assume one
+exists inside the hosted web container.
+
+After deploy, open the Railway URL and sign in with either configured account
+token. Both tokens can view the shared dashboard. Agent writes are still
+account-scoped through bearer auth.
+
+Local watcher setup for you:
+
+```bash
+export FIXLOG_BASE_URL=https://<your-railway-domain>
+export FIXLOG_API_TOKEN=<FIXLOG_ACCOUNT_1_TOKEN>
+export FIXLOG_CLAUDE_PROJECTS_DIR=/Users/maanavagrawal/.claude/projects
+fixlog doctor
+fixlog watch
+```
+
+Local watcher setup for your cofounder:
+
+```bash
+export FIXLOG_BASE_URL=https://<your-railway-domain>
+export FIXLOG_API_TOKEN=<FIXLOG_ACCOUNT_2_TOKEN>
+export FIXLOG_CLAUDE_PROJECTS_DIR=/Users/<cofounder>/.claude/projects
+fixlog doctor
+fixlog watch
+```
+
+`fixlog doctor` checks the hosted health endpoint, token auth, and local Claude
+projects path before the watcher starts.
 
 ## Start A Session
 

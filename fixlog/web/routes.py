@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
+from urllib.parse import parse_qs
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session, joinedload
@@ -22,7 +23,14 @@ from fixlog.api.shared import (
     with_entry_summary_options,
 )
 from fixlog.auth.deps import account_from_authorization, session_from_header
+from fixlog.auth.web import (
+    WEB_SESSION_COOKIE,
+    account_from_request,
+    create_web_session_cookie,
+)
+from fixlog.config import get_settings
 from fixlog.db.models import (
+    Account,
     AgentPersona,
     AgentSession,
     Entry,
@@ -83,6 +91,60 @@ templates.env.filters["signature_title"] = _signature_title
 templates.env.filters["short_id"] = _short_id
 
 
+@router.get("/login", response_class=HTMLResponse)
+def login_page(
+    request: Request,
+    next: str = "/",
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"next_path": _safe_next_path(next), "error": None},
+    )
+
+
+@router.post("/login", response_class=Response)
+async def login_submit(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    settings = get_settings()
+    form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True)
+    raw_token = form.get("token", [""])[0].strip()
+    next_path = _safe_next_path(form.get("next", ["/"])[0])
+    try:
+        account = account_from_authorization(f"Bearer {raw_token}", db)
+        cookie_value = create_web_session_cookie(account, settings)
+    except HTTPException:
+        return templates.TemplateResponse(
+            request,
+            "login.html",
+            {
+                "next_path": next_path,
+                "error": "That token was not accepted.",
+            },
+            status_code=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    response = RedirectResponse(next_path, status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        WEB_SESSION_COOKIE,
+        cookie_value,
+        max_age=settings.fixlog_web_session_ttl_seconds,
+        httponly=True,
+        secure=settings.web_cookie_secure,
+        samesite="lax",
+    )
+    return response
+
+
+@router.post("/logout", response_class=Response)
+def logout() -> Response:
+    response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie(WEB_SESSION_COOKIE)
+    return response
+
+
 @router.get("/", response_class=HTMLResponse)
 def feed_page(request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
     feed = build_feed(db, limit=50, offset=0)
@@ -135,13 +197,8 @@ def session_events_page(
     x_fixlog_session_id: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> Response:
-    account = account_from_authorization(authorization, db)
-    session = session_from_header(account, x_fixlog_session_id, db)
-    if session.id != session_id:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="URL session_id does not match X-Fixlog-Session-Id",
-        )
+    account = _dashboard_account(request, authorization, db)
+    session = _session_for_dashboard(account, session_id, x_fixlog_session_id, db)
     events = _session_events(db, session_id, limit=limit, offset=offset, kind=kind)
     if not _wants_html(request):
         payload = SessionEventListResponse(
@@ -229,6 +286,56 @@ def question_detail_page(
 def _wants_html(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "text/html" in accept and "application/json" not in accept
+
+
+def _safe_next_path(value: str) -> str:
+    if not value.startswith("/") or value.startswith("//"):
+        return "/"
+    return value
+
+
+def _dashboard_account(
+    request: Request,
+    authorization: str | None,
+    db: Session,
+) -> Account:
+    settings = get_settings()
+    if authorization is not None:
+        return account_from_authorization(authorization, db)
+    account = account_from_request(request, db, settings)
+    if account is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Dashboard login required",
+        )
+    return account
+
+
+def _session_for_dashboard(
+    account: Account,
+    session_id: UUID,
+    x_fixlog_session_id: str | None,
+    db: Session,
+) -> AgentSession:
+    if x_fixlog_session_id is not None:
+        session = session_from_header(account, x_fixlog_session_id, db)
+        if session.id != session_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="URL session_id does not match X-Fixlog-Session-Id",
+            )
+        return session
+
+    session = db.scalar(
+        select(AgentSession)
+        .options(joinedload(AgentSession.persona).joinedload(AgentPersona.account))
+        .where(AgentSession.id == session_id)
+    )
+    if session is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
+        )
+    return session
 
 
 def _session_events(

@@ -89,7 +89,7 @@ code {
 
 .app-shell {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
   align-items: center;
   gap: 24px;
   min-height: 64px;
@@ -136,6 +136,30 @@ code {
   justify-content: end;
 }
 
+.logout-form {
+  display: flex;
+  justify-content: end;
+}
+
+.logout-form button,
+.button-primary {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+.button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+}
+
 .search-control {
   display: grid;
   gap: 4px;
@@ -157,7 +181,48 @@ code {
   padding: 8px 10px;
 }
 
+.login-panel {
+  display: grid;
+  gap: 14px;
+  max-width: 420px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.login-field {
+  display: grid;
+  gap: 6px;
+}
+
+.login-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.login-field input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  padding: 9px 10px;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .search-control input:focus,
+.login-field input:focus,
+.logout-form button:focus-visible,
+.button-primary:focus-visible,
 .view-tab:focus-visible,
 .broadcast-card:focus-visible,
 .detail-link:focus-visible,
@@ -509,6 +574,13 @@ summary {
 .session-row h2 {
   margin: 0;
   font-size: 16px;
+}
+
+.session-link {
+  width: fit-content;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .events-list {

@@ -226,3 +226,28 @@
   - `.venv/bin/pytest tests/test_verifier_worker.py -q` passed with 7 tests.
   - `zsh -lic '.venv/bin/pytest tests/test_auto_verification_e2e.py -q'` passed with 2 real-Docker tests.
   - `zsh -lic '.venv/bin/pytest -q'` passed with 170 tests and 1 skipped.
+
+# Railway Pilot Productionization Todo
+
+## Scope
+- [x] Make the FastAPI app deploy cleanly on Railway with a Dockerfile/start command that binds to Railway's `PORT`.
+- [x] Add a health endpoint suitable for Railway healthchecks.
+- [x] Keep SQLite viable for the two-person pilot by documenting a Railway volume mounted at `/data` and `DATABASE_URL=sqlite:////data/fixlog.sqlite3`.
+- [x] Add shared browser dashboard auth so either configured account token can log in and view the dashboard without manually setting API headers.
+- [x] Keep local watcher/agent ingestion token-based, so each developer points their laptop harness at the hosted `FIXLOG_BASE_URL` with their own `FIXLOG_API_TOKEN`.
+- [x] Disable the Docker verifier by default in Railway instructions unless a separate Docker-capable worker is deployed.
+- [x] Update docs and example environment variables for the exact Railway/cofounder setup.
+- [x] Add regression tests for web login, dashboard protection, healthcheck behavior, and authenticated session-event viewing.
+- [x] Run focused tests, then full pytest before calling this ready.
+
+## Review Notes
+- Railway docs currently require services to listen on `0.0.0.0:$PORT`, and healthchecks expect a `200` path during deploy.
+- Railway volumes persist data only when mounted into the running service; for SQLite the safest pilot path is an attached volume at `/data` and an absolute SQLite URL.
+- Browser auth is for human dashboard visibility. Agent writes still use `Authorization: Bearer <token>` and session ownership checks.
+- Auto-sandbox verification remains appropriate for a local/Docker-capable worker, but the Railway web service should not assume a Docker daemon exists.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_production_auth.py tests/test_web_views.py tests/harness/test_cli.py -q` passed with 22 tests.
+  - `.venv/bin/pytest -q` passed with 183 tests and 12 skipped.
+  - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
+  - `docker build -t fixlog-railway-smoke .` completed successfully.
+  - `docker run --rm fixlog-railway-smoke python -c "import fixlog.main; print(\"import-ok\")"` completed successfully.

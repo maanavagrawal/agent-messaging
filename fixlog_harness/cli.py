@@ -5,8 +5,10 @@ import json
 import logging
 from pathlib import Path
 
+import httpx
+
 from fixlog_harness.client import FixlogClient
-from fixlog_harness.config import get_harness_settings
+from fixlog_harness.config import HarnessSettings, get_harness_settings
 from fixlog_harness.harvester import Harvester, load_pending_harvests
 from fixlog_harness.stuck_detector import StuckDetector
 from fixlog_harness.watcher import HarnessPipeline, SessionMapStore, watch
@@ -16,6 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="fixlog")
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("watch")
+    subcommands.add_parser("doctor")
     replay = subcommands.add_parser("replay")
     replay.add_argument("path", type=Path)
     harvest = subcommands.add_parser("harvest")
@@ -47,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
         except KeyboardInterrupt:
             return 0
         return 0
+    if args.command == "doctor":
+        return _doctor(settings)
     return 1
 
 
@@ -88,6 +93,43 @@ def _configure_logging() -> None:
         level=logging.INFO,
         format="%(levelname)s:%(name)s:%(message)s",
     )
+
+
+def _doctor(settings: HarnessSettings) -> int:
+    base_url = settings.fixlog_base_url
+    token = settings.fixlog_api_token
+    projects_dir = settings.claude_projects_dir
+    ok = True
+    print(f"base_url={base_url}")
+    print(f"claude_projects_dir={projects_dir}")
+    if not token:
+        print("auth=missing FIXLOG_API_TOKEN")
+        ok = False
+    if not projects_dir.exists():
+        print("claude_projects_dir_status=missing")
+        ok = False
+    else:
+        print("claude_projects_dir_status=ok")
+
+    try:
+        with httpx.Client(base_url=base_url, timeout=10) as client:
+            health = client.get("/healthz")
+            print(f"healthz={health.status_code}")
+            if health.status_code != 200:
+                ok = False
+            if token:
+                auth_check = client.get(
+                    "/sandbox/status",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                print(f"auth_check={auth_check.status_code}")
+                if auth_check.status_code != 200:
+                    ok = False
+    except httpx.HTTPError as exc:
+        print(f"server=unreachable {exc}")
+        ok = False
+
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":  # pragma: no cover
