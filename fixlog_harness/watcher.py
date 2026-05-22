@@ -87,14 +87,27 @@ class HarnessPipeline:
         session_store: SessionMapStore,
         detector: StuckDetector,
         harvester: HarvesterProtocol,
+        allowed_projects: list[Path] | None = None,
     ) -> None:
         self.client = client
         self.session_store = session_store
         self.detector = detector
         self.harvester = harvester
+        self.allowed_projects = [
+            path.expanduser().resolve(strict=False)
+            for path in (allowed_projects or [])
+        ]
         self.events_by_source: dict[str, list[NormalizedEvent]] = {}
 
-    def process_event(self, event: NormalizedEvent) -> SessionMapping:
+    def process_event(self, event: NormalizedEvent) -> SessionMapping | None:
+        if not self._event_allowed(event):
+            logger.debug(
+                "dropping event outside allowed projects source_session=%s cwd=%s kind=%s",
+                event.source_session_id,
+                event.cwd,
+                event.kind,
+            )
+            return None
         mapping = self._mapping_for(event)
         self.client.post_event(mapping.fixlog_session_id, event)
         key = _mapping_key(event.source_tool, event.source_session_id)
@@ -105,16 +118,24 @@ class HarnessPipeline:
             self.client.post_stuck_signal(mapping.fixlog_session_id, signal)
         return mapping
 
+    def _event_allowed(self, event: NormalizedEvent) -> bool:
+        if not self.allowed_projects:
+            return True
+        if event.cwd is None:
+            return False
+        cwd = Path(event.cwd).expanduser().resolve(strict=False)
+        return any(_path_contains(project, cwd) for project in self.allowed_projects)
+
     def replay_file(self, path: Path, parser: LogParser | None = None) -> None:
         parser = parser or ClaudeCodeLogParser()
         last_event: NormalizedEvent | None = None
         for event in parser.initial_events_from_file_header(path):
-            self.process_event(event)
-            last_event = event
+            if self.process_event(event) is not None:
+                last_event = event
         for line in path.read_text().splitlines():
             for event in parser.parse_line(line):
-                self.process_event(event)
-                last_event = event
+                if self.process_event(event) is not None:
+                    last_event = event
         if last_event is not None:
             end_event = last_event.model_copy(
                 update={
@@ -126,6 +147,8 @@ class HarnessPipeline:
                 }
             )
             mapping = self.process_event(end_event)
+            if mapping is None:
+                return
             key = _mapping_key(end_event.source_tool, end_event.source_session_id)
             candidate = self.harvester.harvest(
                 self.events_by_source.get(key, []), mapping.fixlog_session_id
@@ -244,6 +267,14 @@ def tail_file(path: Path, pipeline: HarnessPipeline) -> None:
 
 def _mapping_key(source_tool: str, source_session_id: str) -> str:
     return f"{source_tool}:{source_session_id}"
+
+
+def _path_contains(parent: Path, child: Path) -> bool:
+    try:
+        child.relative_to(parent)
+    except ValueError:
+        return False
+    return True
 
 
 def _observer_class() -> type[Any]:

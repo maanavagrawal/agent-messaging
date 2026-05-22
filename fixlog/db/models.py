@@ -153,8 +153,35 @@ class Account(Base):
     )
 
     personas: Mapped[list[AgentPersona]] = relationship(back_populates="account")
+    device_tokens: Mapped[list[DeviceToken]] = relationship(back_populates="account")
     questions: Mapped[list[Question]] = relationship(back_populates="account")
     entries: Mapped[list[Entry]] = relationship(back_populates="account")
+
+
+class DeviceToken(Base):
+    __tablename__ = "device_tokens"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("accounts.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    token_hash: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        UTCDateTime(timezone=True), default=utc_now, nullable=False
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        UTCDateTime(timezone=True), nullable=True
+    )
+
+    account: Mapped[Account] = relationship(back_populates="device_tokens")
 
 
 class AgentPersona(Base):

@@ -45,7 +45,16 @@ class FixlogAuthMiddleware(BaseHTTPMiddleware):
 
 
 def _is_public_path(path: str) -> bool:
-    return any(path == item or path.startswith(item) for item in PUBLIC_PATHS)
+    if any(path == item or path.startswith(item) for item in PUBLIC_PATHS):
+        return True
+    # Collector write endpoints own bearer-token validation in route dependencies.
+    # Let them receive scoped device tokens without granting those tokens dashboard access.
+    return (
+        path == "/collector/status"
+        or path == "/sessions/start"
+        or (path.startswith("/sessions/") and path.endswith("/heartbeat"))
+        or (path.startswith("/sessions/") and path.endswith("/events"))
+    )
 
 
 def _wants_html(request: Request) -> bool:

@@ -8,7 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
-from fixlog.auth.deps import require_account, require_session
+from fixlog.auth.collector import (
+    CollectorAuth,
+    mark_device_token_used,
+    require_collector_auth,
+    require_collector_session,
+)
+from fixlog.auth.deps import require_session
 from fixlog.db.models import Account, AgentPersona, AgentSession, SessionEvent, utc_now
 from fixlog.db.session import get_db
 from fixlog.identity.persona import display_name_for_persona, persona_id_for
@@ -33,9 +39,10 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 @router.post("/start", response_model=SessionStartResponse)
 def start_session(
     payload: SessionStartRequest,
-    account: Account = Depends(require_account),
+    auth: CollectorAuth = Depends(require_collector_auth),
     db: Session = Depends(get_db),
 ) -> SessionStartResponse:
+    account = auth.account
     now = utc_now()
     persona_id = persona_id_for(account.id, payload.model_name, payload.harness_name)
     persona = db.scalar(
@@ -66,6 +73,7 @@ def start_session(
         source_tool=payload.source_tool,
         source_tool_session_id=payload.source_tool_session_id,
     )
+    mark_device_token_used(auth)
     db.add(session)
     db.commit()
     db.refresh(session)
@@ -84,10 +92,10 @@ def start_session(
 @router.post("/{session_id}/heartbeat", response_model=SessionHeartbeatResponse)
 def heartbeat_session(
     session_id: UUID,
-    auth: tuple[Account, AgentSession] = Depends(require_session),
+    auth: tuple[CollectorAuth, AgentSession] = Depends(require_collector_session),
     db: Session = Depends(get_db),
 ) -> SessionHeartbeatResponse:
-    _account, session = auth
+    collector_auth, session = auth
     if session.id != session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -96,6 +104,7 @@ def heartbeat_session(
     now = utc_now()
     session.last_heartbeat = now
     session.persona.last_seen = now
+    mark_device_token_used(collector_auth)
     db.commit()
     return SessionHeartbeatResponse(ok=True)
 
@@ -109,10 +118,10 @@ def active_sessions(db: Session = Depends(get_db)) -> ActiveSessionsResponse:
 def create_session_event(
     session_id: UUID,
     payload: SessionEventCreate,
-    auth: tuple[Account, AgentSession] = Depends(require_session),
+    auth: tuple[CollectorAuth, AgentSession] = Depends(require_collector_session),
     db: Session = Depends(get_db),
 ) -> SessionEventCreateResponse:
-    _account, session = auth
+    collector_auth, session = auth
     if session.id != session_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -125,6 +134,7 @@ def create_session_event(
         payload=payload.payload,
     )
     session.last_heartbeat = utc_now()
+    mark_device_token_used(collector_auth)
     db.add(event)
     db.commit()
     db.refresh(event)

@@ -120,6 +120,39 @@ def test_replay_file_auto_submits_when_enabled(tmp_path: Path) -> None:
     assert len(client.submitted) == 1
 
 
+def test_pipeline_drops_events_outside_allowed_projects(tmp_path: Path) -> None:
+    client = FakeClient()
+    pipeline = HarnessPipeline(
+        client=client,
+        session_store=SessionMapStore(tmp_path / "map.json"),
+        detector=StuckDetector(),
+        harvester=FakeHarvester(),
+        allowed_projects=[tmp_path / "allowed"],
+    )
+    outside = NormalizedEvent(
+        source_tool="claude_code",
+        source_session_id="source-outside",
+        source_event_id="event-outside",
+        ts=datetime.fromisoformat("2026-04-27T01:00:00+00:00"),
+        kind="agent_message",
+        cwd=str(tmp_path / "elsewhere"),
+        text="outside",
+    )
+    inside = outside.model_copy(
+        update={
+            "source_session_id": "source-inside",
+            "source_event_id": "event-inside",
+            "cwd": str(tmp_path / "allowed" / "repo"),
+            "text": "inside",
+        }
+    )
+
+    assert pipeline.process_event(outside) is None
+    assert pipeline.process_event(inside) is not None
+
+    assert [event.text for _, event in client.events] == ["inside"]
+
+
 def test_session_map_store_round_trips(tmp_path: Path) -> None:
     path = tmp_path / "map.json"
     store = SessionMapStore(path)

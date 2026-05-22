@@ -10,6 +10,7 @@ import httpx
 from fixlog_harness.client import FixlogClient
 from fixlog_harness.config import HarnessSettings, get_harness_settings
 from fixlog_harness.harvester import Harvester, load_pending_harvests
+from fixlog_harness.local_config import detect_project_root, write_local_config
 from fixlog_harness.stuck_detector import StuckDetector
 from fixlog_harness.watcher import HarnessPipeline, SessionMapStore, watch
 
@@ -19,6 +20,10 @@ def main(argv: list[str] | None = None) -> int:
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("watch")
     subcommands.add_parser("doctor")
+    connect = subcommands.add_parser("connect")
+    connect.add_argument("--url", required=True)
+    connect.add_argument("--token", required=True)
+    connect.add_argument("--project", type=Path)
     replay = subcommands.add_parser("replay")
     replay.add_argument("path", type=Path)
     harvest = subcommands.add_parser("harvest")
@@ -33,12 +38,17 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_harness_settings()
     if args.command == "harvest":
         return _harvest_command(args.harvest_command, args.id if hasattr(args, "id") else None)
+    if args.command == "connect":
+        return _connect(args.url, args.token, args.project)
+    if args.command == "doctor":
+        return _doctor(settings)
 
     pipeline = HarnessPipeline(
         client=FixlogClient(settings),
         session_store=SessionMapStore(settings.session_map_path),
         detector=StuckDetector(),
         harvester=Harvester(settings),
+        allowed_projects=settings.allowed_projects,
     )
     if args.command == "replay":
         pipeline.replay_file(args.path)
@@ -50,8 +60,6 @@ def main(argv: list[str] | None = None) -> int:
         except KeyboardInterrupt:
             return 0
         return 0
-    if args.command == "doctor":
-        return _doctor(settings)
     return 1
 
 
@@ -102,6 +110,14 @@ def _doctor(settings: HarnessSettings) -> int:
     ok = True
     print(f"base_url={base_url}")
     print(f"claude_projects_dir={projects_dir}")
+    allowed_projects = getattr(settings, "allowed_projects", [])
+    if allowed_projects:
+        print(
+            "allowed_projects="
+            + ",".join(str(path) for path in allowed_projects)
+        )
+    else:
+        print("allowed_projects=all")
     if not token:
         print("auth=missing FIXLOG_API_TOKEN")
         ok = False
@@ -119,7 +135,7 @@ def _doctor(settings: HarnessSettings) -> int:
                 ok = False
             if token:
                 auth_check = client.get(
-                    "/sandbox/status",
+                    "/collector/status",
                     headers={"Authorization": f"Bearer {token}"},
                 )
                 print(f"auth_check={auth_check.status_code}")
@@ -130,6 +146,19 @@ def _doctor(settings: HarnessSettings) -> int:
         ok = False
 
     return 0 if ok else 1
+
+
+def _connect(base_url: str, token: str, project: Path | None) -> int:
+    project_root = project.expanduser().resolve(strict=False) if project else detect_project_root()
+    config_path = write_local_config(
+        base_url=base_url.rstrip("/"),
+        api_token=token,
+        project=project_root,
+    )
+    print(f"connected base_url={base_url.rstrip('/')}")
+    print(f"allowed_project={project_root}")
+    print(f"config={config_path}")
+    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover

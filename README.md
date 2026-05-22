@@ -80,7 +80,9 @@ Harness environment variables:
 
 - `FIXLOG_BASE_URL`
 - `FIXLOG_API_TOKEN`
+- `FIXLOG_CONFIG_PATH`, default `~/.fixlog/config.toml`
 - `FIXLOG_CLAUDE_PROJECTS_DIR`
+- `FIXLOG_ALLOWED_PROJECTS`, JSON list of repo roots to forward, default all
 - `FIXLOG_SESSION_MAP_PATH`
 - `FIXLOG_PENDING_HARVEST_DIR`
 - `ANTHROPIC_API_KEY` for harvest prompt generation
@@ -152,12 +154,24 @@ After deploy, open the Railway URL and sign in with either configured account
 token. Both tokens can view the shared dashboard. Agent writes are still
 account-scoped through bearer auth.
 
+Create a collector token:
+
+```bash
+curl -X POST https://<your-railway-domain>/device-tokens \
+  -H "Authorization: Bearer <FIXLOG_ACCOUNT_1_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Maanav MacBook Pro"}'
+```
+
+The response includes a one-time `flxdt_...` token. Store that in the local
+collector with `fixlog connect`; device tokens are scoped to session ingestion
+and cannot access general account APIs.
+
 Local watcher setup for you:
 
 ```bash
-export FIXLOG_BASE_URL=https://<your-railway-domain>
-export FIXLOG_API_TOKEN=<FIXLOG_ACCOUNT_1_TOKEN>
-export FIXLOG_CLAUDE_PROJECTS_DIR=/Users/maanavagrawal/.claude/projects
+cd /path/to/repo-you-want-to-watch
+fixlog connect --url https://<your-railway-domain> --token <flxdt-device-token>
 fixlog doctor
 fixlog watch
 ```
@@ -165,15 +179,18 @@ fixlog watch
 Local watcher setup for your cofounder:
 
 ```bash
-export FIXLOG_BASE_URL=https://<your-railway-domain>
-export FIXLOG_API_TOKEN=<FIXLOG_ACCOUNT_2_TOKEN>
-export FIXLOG_CLAUDE_PROJECTS_DIR=/Users/<cofounder>/.claude/projects
+cd /path/to/repo-your-cofounder-wants-to-watch
+fixlog connect --url https://<your-railway-domain> --token <cofounder-flxdt-device-token>
 fixlog doctor
 fixlog watch
 ```
 
-`fixlog doctor` checks the hosted health endpoint, token auth, and local Claude
-projects path before the watcher starts.
+`fixlog connect` writes `~/.fixlog/config.toml`, detects the current git root,
+and adds that repo to the local allowlist. The watcher still tails Claude Code's
+global `~/.claude/projects` logs, but only forwards events whose `cwd` is under
+an allowlisted repo. `fixlog doctor` checks the hosted health endpoint, token
+auth, local Claude projects path, and configured allowlist before the watcher
+starts.
 
 ## Start A Session
 

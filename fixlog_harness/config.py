@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from functools import lru_cache
+import os
 from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from fixlog_harness.local_config import load_local_config
 
 
 class HarnessSettings(BaseSettings):
@@ -30,6 +33,10 @@ class HarnessSettings(BaseSettings):
         default=Path.home() / ".fixlog" / "pending_harvests",
         alias="FIXLOG_PENDING_HARVEST_DIR",
     )
+    allowed_projects: list[Path] = Field(
+        default_factory=list,
+        alias="FIXLOG_ALLOWED_PROJECTS",
+    )
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-sonnet-4-5", alias="FIXLOG_ANTHROPIC_MODEL")
     auto_submit_harvests: bool = Field(
@@ -41,4 +48,31 @@ class HarnessSettings(BaseSettings):
 
 @lru_cache
 def get_harness_settings() -> HarnessSettings:
-    return HarnessSettings()
+    settings = HarnessSettings()
+    local_config = load_local_config()
+    updates: dict[str, object] = {}
+    if "FIXLOG_BASE_URL" not in os.environ and local_config.base_url is not None:
+        updates["fixlog_base_url"] = local_config.base_url
+    if "FIXLOG_API_TOKEN" not in os.environ and local_config.api_token is not None:
+        updates["fixlog_api_token"] = local_config.api_token
+    if (
+        "FIXLOG_CLAUDE_PROJECTS_DIR" not in os.environ
+        and local_config.claude_projects_dir is not None
+    ):
+        updates["claude_projects_dir"] = local_config.claude_projects_dir
+    if (
+        "FIXLOG_SESSION_MAP_PATH" not in os.environ
+        and local_config.session_map_path is not None
+    ):
+        updates["session_map_path"] = local_config.session_map_path
+    if (
+        "FIXLOG_PENDING_HARVEST_DIR" not in os.environ
+        and local_config.pending_harvest_dir is not None
+    ):
+        updates["pending_harvest_dir"] = local_config.pending_harvest_dir
+    if (
+        "FIXLOG_ALLOWED_PROJECTS" not in os.environ
+        and local_config.allowed_projects
+    ):
+        updates["allowed_projects"] = local_config.allowed_projects
+    return settings.model_copy(update=updates)

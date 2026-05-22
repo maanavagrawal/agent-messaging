@@ -7,7 +7,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from fixlog.api import confirm, entries, feed, questions, sandbox, search, sessions, verifications
+from fixlog.api import (
+    collector,
+    confirm,
+    device_tokens,
+    entries,
+    feed,
+    questions,
+    sandbox,
+    search,
+    sessions,
+    verifications,
+)
 from fixlog.auth.middleware import FixlogAuthMiddleware
 from fixlog.config import get_settings
 from fixlog.db.seed import seed_accounts_from_settings
@@ -89,6 +100,8 @@ def create_app(
 
     app.mount("/static", StaticFiles(directory="fixlog/web/static"), name="static")
     app.include_router(web_routes.router)
+    app.include_router(collector.router)
+    app.include_router(device_tokens.router)
     app.include_router(sessions.router)
     app.include_router(entries.router)
     app.include_router(sandbox.router)

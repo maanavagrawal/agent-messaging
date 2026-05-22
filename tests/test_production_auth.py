@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from conftest import auth_headers, start_session
+from fixlog.auth.collector import DEVICE_TOKEN_PREFIX
 from fixlog.config import get_settings
 from fixlog.main import create_app
 
@@ -136,3 +137,25 @@ def test_session_events_page_allows_logged_in_dashboard_view(
 
     assert response.status_code == 200
     assert "hosted dashboard event" in response.text
+
+
+def test_auth_required_allows_device_token_ingestion(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    created = client.post(
+        "/device-tokens",
+        headers=auth_headers(),
+        json={"name": "collector"},
+    )
+    assert created.status_code == 201
+    token = created.json()["token"]
+    assert token.startswith(DEVICE_TOKEN_PREFIX)
+
+    response = client.post(
+        "/sessions/start",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"model_name": "claude-code", "harness_name": "fixlog-watch"},
+    )
+
+    assert response.status_code == 200

@@ -28,8 +28,8 @@ def test_doctor_reports_success(monkeypatch, tmp_path: Path, capsys) -> None:
             return None
 
         def get(self, path: str, headers: dict[str, str] | None = None) -> object:
-            assert path in {"/healthz", "/sandbox/status"}
-            if path == "/sandbox/status":
+            assert path in {"/healthz", "/collector/status"}
+            if path == "/collector/status":
                 assert headers == {"Authorization": "Bearer token-one"}
             return SimpleNamespace(status_code=200)
 
@@ -44,3 +44,18 @@ def test_doctor_reports_success(monkeypatch, tmp_path: Path, capsys) -> None:
     output = capsys.readouterr().out
     assert "healthz=200" in output
     assert "auth_check=200" in output
+
+
+def test_connect_writes_local_config(monkeypatch, tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "config.toml"
+    project = tmp_path / "repo"
+    project.mkdir()
+    monkeypatch.setenv("FIXLOG_CONFIG_PATH", str(config_path))
+
+    assert cli._connect("https://fixlog.example/", "flxdt_test", project) == 0
+
+    output = capsys.readouterr().out
+    assert "connected base_url=https://fixlog.example" in output
+    assert config_path.exists()
+    assert 'base_url = "https://fixlog.example"' in config_path.read_text()
+    assert 'api_token = "flxdt_test"' in config_path.read_text()

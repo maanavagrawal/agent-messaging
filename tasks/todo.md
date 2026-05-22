@@ -251,3 +251,40 @@
   - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
   - `docker build -t fixlog-railway-smoke .` completed successfully.
   - `docker run --rm fixlog-railway-smoke python -c "import fixlog.main; print(\"import-ok\")"` completed successfully.
+
+# Device Token Collector Onboarding Todo
+
+## Architecture Decisions
+- [x] Separate human/dashboard account tokens from collector/device tokens.
+- [x] Device tokens are scoped to session ingestion first: start session, heartbeat, post session events, and collector status.
+- [x] Device tokens do not grant dashboard/admin/API read access.
+- [x] Local collector config lives at `~/.fixlog/config.toml`, with env vars still taking precedence for local debugging.
+- [x] Repo privacy boundary is local allowlist filtering: if `allowed_projects` is set, events without a cwd under an allowed project are dropped before network forwarding.
+- [x] Install script and polished dashboard device page are deferred to Batch 2 after the token/config foundation is tested.
+
+## Batch Plan
+- [x] Batch 1: server device-token model/API, collector auth dependencies, `fixlog connect`, local config loading, project allowlist filtering, and tests.
+- [ ] Batch 2: dashboard device/connect page and one-copy repo connect command.
+- [ ] Batch 3: hosted install script that installs/runs the lightweight collector without cloning the full repo manually.
+- [ ] Batch 4: optional background service install via LaunchAgent on macOS.
+- [ ] Batch 5: MCP surface for active fixlog search/query flows, after passive collection is easy and trustworthy.
+
+## Batch 1 Test Plan
+- [x] Account token can create/list/revoke device tokens.
+- [x] Device token can start sessions and post events.
+- [x] Revoked device token is rejected.
+- [x] Device token cannot access general account/dashboard API endpoints.
+- [x] `fixlog connect` writes config and `get_harness_settings()` loads it.
+- [x] Env vars override local config.
+- [x] Watcher allowlist forwards in-project events and drops out-of-project events.
+
+## Batch 1 Review Notes
+- Added `device_tokens` with hashed `flxdt_...` tokens and one-time token return on creation.
+- Added collector-scoped auth for `/collector/status`, `/sessions/start`, `/sessions/{id}/heartbeat`, and `/sessions/{id}/events`; general account APIs still require account tokens.
+- Added `fixlog connect --url ... --token ... [--project ...]`, storing `~/.fixlog/config.toml` and an allowlisted git root.
+- Watcher now drops events whose `cwd` is outside configured `allowed_projects`.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_device_tokens.py tests/test_production_auth.py tests/harness/test_local_config.py tests/harness/test_cli.py tests/harness/test_watcher_pipeline.py -q` passed with 27 tests.
+  - `.venv/bin/pytest -q` passed with 193 tests and 12 skipped.
+  - `DATABASE_URL=sqlite:////tmp/fixlog-device-token-alembic.sqlite3 .venv/bin/alembic upgrade head` applied through `0004_device_tokens`.
+  - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
