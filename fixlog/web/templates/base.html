@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-diff.min.js"></script>
   </head>
   <body>
-    {% set active_tab = "agent" if request.url.path.startswith("/sessions") else "human" %}
+    {% set active_tab = "settings" if request.url.path.startswith("/settings") else ("agent" if request.url.path.startswith("/sessions") else "human") %}
     <a class="skip-link" href="#content">Skip to content</a>
     <header class="app-header">
       <div class="app-shell">
@@ -19,6 +19,7 @@
         <nav class="view-tabs" aria-label="Primary views">
           <a class="view-tab" href="/" {% if active_tab == "human" %}aria-current="page"{% endif %}>Human</a>
           <a class="view-tab" href="/sessions/active" {% if active_tab == "agent" %}aria-current="page"{% endif %}>Agent</a>
+          <a class="view-tab" href="/settings/devices" {% if active_tab == "settings" %}aria-current="page"{% endif %}>Settings</a>
         </nav>
         <form class="header-search" action="/search/errors" method="get">
           <label class="search-control">

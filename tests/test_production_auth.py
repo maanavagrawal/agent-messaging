@@ -95,6 +95,26 @@ def test_login_sets_cookie_and_allows_dashboard(
     assert "Active harness sessions and real agent signals." in response.text
 
 
+def test_login_cookie_allows_device_settings_page(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    login = client.post(
+        "/login",
+        data={"token": "token-one", "next": "/settings/devices"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+
+    response = client.get(
+        "/settings/devices",
+        headers={"Accept": "text/html"},
+    )
+
+    assert response.status_code == 200
+    assert "Connect a local collector." in response.text
+
+
 def test_login_rejects_invalid_token(
     client: TestClient,
     require_auth: None,

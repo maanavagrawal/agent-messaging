@@ -264,7 +264,7 @@
 
 ## Batch Plan
 - [x] Batch 1: server device-token model/API, collector auth dependencies, `fixlog connect`, local config loading, project allowlist filtering, and tests.
-- [ ] Batch 2: dashboard device/connect page and one-copy repo connect command.
+- [x] Batch 2: dashboard device/connect page and one-copy repo connect command.
 - [ ] Batch 3: hosted install script that installs/runs the lightweight collector without cloning the full repo manually.
 - [ ] Batch 4: optional background service install via LaunchAgent on macOS.
 - [ ] Batch 5: MCP surface for active fixlog search/query flows, after passive collection is easy and trustworthy.
@@ -288,3 +288,16 @@
   - `.venv/bin/pytest -q` passed with 193 tests and 12 skipped.
   - `DATABASE_URL=sqlite:////tmp/fixlog-device-token-alembic.sqlite3 .venv/bin/alembic upgrade head` applied through `0004_device_tokens`.
   - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
+
+## Batch 2 Review Notes
+- Added `/settings/devices` as the browser flow for creating and revoking collector device tokens.
+- The dashboard now has a Settings tab with a one-time `fixlog connect --url ... --token flxdt_...` command after token creation.
+- Raw device tokens are shown only in the creation response; later page loads show device metadata, active/revoked state, and last-used time only.
+- Device revocation is scoped to the logged-in/account-token owner.
+- Railway setup docs now direct pilot users to the Settings page before falling back to the API.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_web_views.py -q` passed with 16 tests.
+  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_device_tokens.py -q` passed with 30 tests.
+  - `.venv/bin/pytest -q` passed with 198 tests and 12 skipped.
+  - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
+  - Local HTTP smoke against `http://127.0.0.1:8097/settings/devices` confirmed login, page render, and token creation command output.

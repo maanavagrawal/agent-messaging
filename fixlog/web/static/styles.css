@@ -223,6 +223,7 @@ code {
 .login-field input:focus,
 .logout-form button:focus-visible,
 .button-primary:focus-visible,
+.button-secondary:focus-visible,
 .view-tab:focus-visible,
 .broadcast-card:focus-visible,
 .detail-link:focus-visible,
@@ -536,6 +537,19 @@ summary {
   background: var(--warning-soft);
 }
 
+.notice p {
+  margin: 6px 0 10px;
+}
+
+.notice .code-block {
+  margin: 0;
+}
+
+.notice-success {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
 .notice-fail {
   color: var(--danger);
   background: var(--danger-soft);
@@ -606,6 +620,47 @@ summary {
   overflow: auto;
 }
 
+.settings-panel {
+  margin-bottom: 14px;
+}
+
+.device-form {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.device-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.device-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+.button-secondary {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 7px 10px;
+}
+
 .footer {
   width: min(100% - 32px, var(--content));
   margin: 0 auto;
@@ -637,7 +692,8 @@ summary {
   }
 
   .page-grid,
-  .detail-layout {
+  .detail-layout,
+  .device-form {
     grid-template-columns: 1fr;
   }
 

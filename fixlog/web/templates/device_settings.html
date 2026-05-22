@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}devices · fixlog{% endblock %}
+{% block content %}
+  <section class="page-head">
+    <span class="page-kicker">Settings</span>
+    <h1 class="page-title">Connect a local collector.</h1>
+    <p class="page-copy">
+      Device tokens are scoped to session ingestion. Run the connect command from the repo you want fixlog to watch.
+    </p>
+  </section>
+
+  {% if created_token %}
+    <section class="notice notice-success">
+      <strong>{{ created_name }} token created.</strong>
+      <p>This token is shown once. Run this from the repo you want to connect:</p>
+      <pre class="code-block"><code>fixlog connect --url {{ public_url }} --token {{ created_token }}</code></pre>
+    </section>
+  {% endif %}
+
+  <section class="content-panel settings-panel">
+    <h2>Create device token</h2>
+    <form class="device-form" method="post" action="/settings/devices">
+      <label class="login-field">
+        <span>Device name</span>
+        <input name="name" type="text" placeholder="Jason MacBook Pro" required>
+      </label>
+      <button class="button-primary" type="submit">Create token</button>
+    </form>
+  </section>
+
+  <section class="content-panel settings-panel">
+    <h2>Devices</h2>
+    {% if device_tokens %}
+      <ul class="device-list">
+        {% for token in device_tokens %}
+          <li class="device-row">
+            <div>
+              <strong>{{ token.name }}</strong>
+              <div class="broadcast-meta">
+                <span>created {{ token.created_at|relative_time }}</span>
+                {% if token.last_used_at %}
+                  <span>last used {{ token.last_used_at|relative_time }}</span>
+                {% else %}
+                  <span>never used</span>
+                {% endif %}
+                {% if token.revoked_at %}
+                  <span class="pill pill-redacted">revoked</span>
+                {% else %}
+                  <span class="pill pill-pass">active</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if not token.revoked_at %}
+              <form method="post" action="/settings/devices/{{ token.id }}/revoke">
+                <button class="button-secondary" type="submit">Revoke</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No device tokens yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}

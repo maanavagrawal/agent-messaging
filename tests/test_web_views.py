@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from conftest import (
     auth_headers,
@@ -11,6 +13,8 @@ from conftest import (
     entry_payload,
     start_session,
 )
+from fixlog.auth.collector import DEVICE_TOKEN_PREFIX
+from fixlog.db.models import DeviceToken
 
 
 def test_feed_page_returns_expected_substrings(client: TestClient) -> None:
@@ -151,6 +155,96 @@ def test_session_events_page_renders_with_session_auth(client: TestClient) -> No
     assert response.status_code == 200
     assert "agent_message" in response.text
     assert "hello from the watcher" in response.text
+
+
+def test_device_settings_page_requires_dashboard_auth(client: TestClient) -> None:
+    response = client.get(
+        "/settings/devices",
+        headers={"Accept": "text/html"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_device_settings_page_creates_token_once(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    created = client.post(
+        "/settings/devices",
+        headers={**auth_headers(), "Accept": "text/html"},
+        data={"name": "Jason MacBook Pro"},
+    )
+
+    assert created.status_code == 200
+    assert "Jason MacBook Pro token created." in created.text
+    assert "fixlog connect --url" in created.text
+    assert f"--token {DEVICE_TOKEN_PREFIX}" in created.text
+
+    device_token = db_session.scalar(
+        select(DeviceToken).where(DeviceToken.name == "Jason MacBook Pro")
+    )
+    assert device_token is not None
+    assert device_token.token_hash not in created.text
+
+    refreshed = client.get(
+        "/settings/devices",
+        headers={**auth_headers(), "Accept": "text/html"},
+    )
+
+    assert refreshed.status_code == 200
+    assert "Jason MacBook Pro" in refreshed.text
+    assert f"--token {DEVICE_TOKEN_PREFIX}" not in refreshed.text
+
+
+def test_device_settings_page_revokes_owned_token(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    created = client.post(
+        "/settings/devices",
+        headers={**auth_headers(), "Accept": "text/html"},
+        data={"name": "Collector to revoke"},
+    )
+    assert created.status_code == 200
+    device_token = db_session.scalar(
+        select(DeviceToken).where(DeviceToken.name == "Collector to revoke")
+    )
+    assert device_token is not None
+
+    revoked = client.post(
+        f"/settings/devices/{device_token.id}/revoke",
+        headers={**auth_headers(), "Accept": "text/html"},
+    )
+
+    assert revoked.status_code == 200
+    assert "Collector to revoke" in revoked.text
+    assert "revoked" in revoked.text
+    db_session.refresh(device_token)
+    assert device_token.revoked_at is not None
+
+
+def test_device_settings_page_cannot_revoke_other_account_token(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    created = client.post(
+        "/settings/devices",
+        headers={**auth_headers("token-one"), "Accept": "text/html"},
+        data={"name": "Ada collector"},
+    )
+    assert created.status_code == 200
+    device_token = db_session.scalar(
+        select(DeviceToken).where(DeviceToken.name == "Ada collector")
+    )
+    assert device_token is not None
+
+    response = client.post(
+        f"/settings/devices/{device_token.id}/revoke",
+        headers={**auth_headers("token-two"), "Accept": "text/html"},
+    )
+
+    assert response.status_code == 404
 
 
 def test_exact_error_search_page_returns_expected_substrings(client: TestClient) -> None:

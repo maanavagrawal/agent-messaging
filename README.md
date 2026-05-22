@@ -154,7 +154,15 @@ After deploy, open the Railway URL and sign in with either configured account
 token. Both tokens can view the shared dashboard. Agent writes are still
 account-scoped through bearer auth.
 
-Create a collector token:
+Create a collector token from the dashboard:
+
+1. Open `https://<your-railway-domain>/settings/devices`.
+2. Sign in with your account token if prompted.
+3. Create a device token.
+4. Copy the one-time `fixlog connect ...` command and run it from the repo
+   you want to watch.
+
+For scripts or recovery, the same token can be created through the API:
 
 ```bash
 curl -X POST https://<your-railway-domain>/device-tokens \

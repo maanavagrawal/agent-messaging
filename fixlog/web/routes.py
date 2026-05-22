@@ -23,6 +23,7 @@ from fixlog.api.shared import (
     with_entry_summary_options,
 )
 from fixlog.auth.deps import account_from_authorization, session_from_header
+from fixlog.auth.collector import generate_device_token
 from fixlog.auth.web import (
     WEB_SESSION_COOKIE,
     account_from_request,
@@ -33,13 +34,16 @@ from fixlog.db.models import (
     Account,
     AgentPersona,
     AgentSession,
+    DeviceToken,
     Entry,
     EntryAlsoMatch,
     ErrorSignature,
     Question,
     QuestionStatus,
     SessionEvent,
+    utc_now,
 )
+from fixlog.db.seed import token_hash
 from fixlog.db.session import get_db
 from fixlog.normalizer.python import normalize_python_error
 from fixlog.schemas.search import SearchResponse
@@ -186,6 +190,67 @@ def active_sessions_page(request: Request, db: Session = Depends(get_db)) -> HTM
     )
 
 
+@router.get("/settings/devices", response_class=HTMLResponse)
+def device_settings_page(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    account = _dashboard_account(request, authorization, db)
+    return _device_settings_response(request, account, db)
+
+
+@router.post("/settings/devices", response_class=HTMLResponse)
+async def create_device_settings_token(
+    request: Request,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    account = _dashboard_account(request, authorization, db)
+    form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True)
+    name = form.get("name", [""])[0].strip() or "Local collector"
+    raw_token = generate_device_token()
+    device_token = DeviceToken(
+        account_id=account.id,
+        name=name[:200],
+        token_hash=token_hash(raw_token),
+    )
+    db.add(device_token)
+    db.commit()
+    return _device_settings_response(
+        request,
+        account,
+        db,
+        created_token=raw_token,
+        created_name=device_token.name,
+    )
+
+
+@router.post("/settings/devices/{device_token_id}/revoke", response_class=HTMLResponse)
+def revoke_device_settings_token(
+    device_token_id: UUID,
+    request: Request,
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    account = _dashboard_account(request, authorization, db)
+    device_token = db.scalar(
+        select(DeviceToken).where(
+            DeviceToken.id == device_token_id,
+            DeviceToken.account_id == account.id,
+        )
+    )
+    if device_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Device token not found",
+        )
+    if device_token.revoked_at is None:
+        device_token.revoked_at = utc_now()
+        db.commit()
+    return _device_settings_response(request, account, db)
+
+
 @router.get("/sessions/{session_id}/events/view", response_class=Response)
 def session_events_page(
     session_id: UUID,
@@ -292,6 +357,33 @@ def _safe_next_path(value: str) -> str:
     if not value.startswith("/") or value.startswith("//"):
         return "/"
     return value
+
+
+def _device_settings_response(
+    request: Request,
+    account: Account,
+    db: Session,
+    *,
+    created_token: str | None = None,
+    created_name: str | None = None,
+) -> HTMLResponse:
+    rows = db.scalars(
+        select(DeviceToken)
+        .where(DeviceToken.account_id == account.id)
+        .order_by(DeviceToken.created_at.desc())
+    ).all()
+    public_url = get_settings().fixlog_public_url or str(request.base_url).rstrip("/")
+    return templates.TemplateResponse(
+        request,
+        "device_settings.html",
+        {
+            "account": account,
+            "device_tokens": rows,
+            "created_token": created_token,
+            "created_name": created_name,
+            "public_url": public_url.rstrip("/"),
+        },
+    )
 
 
 def _dashboard_account(
