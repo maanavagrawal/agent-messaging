@@ -9,49 +9,52 @@
     </p>
   </section>
 
-  {% if created_token %}
-    <section class="notice notice-success">
-      <strong>{{ created_name }} token created.</strong>
-      <p>Run this command from the repo you want fixlog to watch. The token is shown once.</p>
-      <pre class="code-block"><code>curl -fsSL {{ public_url }}/install.sh | bash -s -- --token {{ created_token }}</code></pre>
-      <p class="small-copy">Want it to keep running after setup? Add <code>--background</code> to the end of the command.</p>
-    </section>
-  {% endif %}
-
   <section class="content-panel settings-panel">
     <h2>First-time setup</h2>
     <ol class="onboarding-steps">
       <li>
-        <strong>Create a device token</strong>
-        <span>Name the laptop or machine that will run the collector.</span>
+        <div class="setup-step-body">
+          <strong>Create your setup command</strong>
+          <span>Name the laptop or machine that will run the collector.</span>
+          <form class="device-form" method="post" action="/settings/devices">
+            <label class="login-field">
+              <span>Device name</span>
+              <input name="name" type="text" placeholder="Jason MacBook Pro" required>
+            </label>
+            <button class="button-primary" type="submit">Create setup command</button>
+          </form>
+        </div>
       </li>
       <li>
-        <strong>Run the install command inside your repo</strong>
-        <span>The installer writes <code>~/.fixlog/config.toml</code> and allowlists that repo only.</span>
+        <div class="setup-step-body">
+          <strong>Run this inside the repo you want watched</strong>
+          {% if created_token %}
+            <span>Setup command for {{ created_name }}. This token is shown once.</span>
+            <pre class="code-block setup-command"><code>curl -fsSL {{ public_url }}/install.sh | bash -s -- --token {{ created_token }}</code></pre>
+            <span>Want it to keep running after setup? Add <code>--background</code> to the end of the command.</span>
+          {% else %}
+            <span>Create a device token above to reveal the one-command installer.</span>
+            <pre class="code-block setup-command muted-command"><code>curl -fsSL {{ public_url }}/install.sh | bash -s -- --token flxdt_...</code></pre>
+          {% endif %}
+          <span>The installer writes <code>~/.fixlog/config.toml</code> and allowlists that repo only.</span>
+        </div>
       </li>
       <li>
-        <strong>Start capture</strong>
-        <span>Run <code>~/.fixlog/bin/fixlog watch</code>, or use <code>--background</code> for the macOS service.</span>
+        <div class="setup-step-body">
+          <strong>Start capture</strong>
+          <span>Run <code>~/.fixlog/bin/fixlog watch</code>, or use <code>--background</code> for the macOS service.</span>
+        </div>
       </li>
       <li>
-        <strong>Use Claude Code in that repo</strong>
-        <span>Refresh the Agent tab and the active session should appear within a few seconds.</span>
+        <div class="setup-step-body">
+          <strong>Use Claude Code in that repo</strong>
+          <span>Refresh the Agent tab and the active session should appear within a few seconds.</span>
+        </div>
       </li>
     </ol>
     <p class="privacy-note">
       Device tokens can only submit collector events. They cannot read the dashboard, and you can revoke them here anytime.
     </p>
-  </section>
-
-  <section class="content-panel settings-panel">
-    <h2>Create device token</h2>
-    <form class="device-form" method="post" action="/settings/devices">
-      <label class="login-field">
-        <span>Device name</span>
-        <input name="name" type="text" placeholder="Jason MacBook Pro" required>
-      </label>
-      <button class="button-primary" type="submit">Create token</button>
-    </form>
   </section>
 
   <section class="content-panel settings-panel">

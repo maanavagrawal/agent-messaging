@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
@@ -175,8 +176,10 @@ def test_device_settings_page_explains_first_time_setup(client: TestClient) -> N
     assert response.status_code == 200
     assert "Connect your coding agent." in response.text
     assert "First-time setup" in response.text
-    assert "Create a device token" in response.text
-    assert "Run the install command inside your repo" in response.text
+    assert "Create your setup command" in response.text
+    assert "Create setup command" in response.text
+    assert "Run this inside the repo you want watched" in response.text
+    assert "curl -fsSL" in response.text
     assert "Start capture" in response.text
     assert "Use Claude Code in that repo" in response.text
     assert "Device tokens can only submit collector events." in response.text
@@ -193,7 +196,7 @@ def test_device_settings_page_creates_token_once(
     )
 
     assert created.status_code == 200
-    assert "Jason MacBook Pro token created." in created.text
+    assert "Setup command for Jason MacBook Pro." in created.text
     assert "curl -fsSL" in created.text
     assert "/install.sh | bash -s --" in created.text
     assert f"--token {DEVICE_TOKEN_PREFIX}" in created.text
@@ -212,7 +215,8 @@ def test_device_settings_page_creates_token_once(
 
     assert refreshed.status_code == 200
     assert "Jason MacBook Pro" in refreshed.text
-    assert f"--token {DEVICE_TOKEN_PREFIX}" not in refreshed.text
+    assert "This token is shown once." not in refreshed.text
+    assert re.search(r"--token flxdt_[A-Za-z0-9_-]{20,}", refreshed.text) is None
 
 
 def test_device_settings_page_revokes_owned_token(

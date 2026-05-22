@@ -11,3 +11,4 @@
 - For fixlog frontend implementation, default to less UI. It is better to ship a smaller truthful surface and add later than to make the user manually remove irrelevant mockup-driven components.
 - When adding a browser template for an API-shaped path, add the matching web route and a regression test in the same change; otherwise local browser inspection falls through to auth-only API handlers and looks broken.
 - For auto-sandbox verification, model the real sequence as setup -> reproduce -> apply fix -> verify; writing fixed files before setup can make setup commands silently erase the fix.
+- For onboarding pages, put the actual setup action inside the onboarding flow. Explanatory steps plus a separate form still feel unclear compared with Moltbook-style setup, where the command/action is embedded directly in the first-run path.

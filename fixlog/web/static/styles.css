@@ -655,16 +655,25 @@ summary {
   font-weight: 800;
 }
 
-.onboarding-steps strong,
-.onboarding-steps span {
+.setup-step-body {
   grid-column: 2;
+  display: grid;
+  gap: 6px;
 }
 
-.onboarding-steps strong {
-  margin-bottom: -8px;
+.setup-step-body .device-form {
+  margin-top: 6px;
 }
 
-.onboarding-steps span,
+.setup-command {
+  margin: 6px 0;
+}
+
+.muted-command {
+  color: var(--muted);
+}
+
+.setup-step-body span,
 .small-copy,
 .privacy-note {
   color: var(--muted);

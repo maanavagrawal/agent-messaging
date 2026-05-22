@@ -327,7 +327,8 @@
 - [x] Put the setup flow before token creation: create token, run install command inside repo, start capture, use Claude Code.
 - [x] Explain the privacy boundary: device tokens can only submit collector events and can be revoked.
 - [x] Keep the one-time command visible after token creation, with an explicit `--background` hint.
+- [x] Fold token creation and the generated install command into the onboarding steps themselves, Moltbook-style, instead of showing onboarding copy separately from setup action.
 - Verification completed:
   - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py -q` passed with 28 tests.
   - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
-  - `.venv/bin/pytest -q` passed with 204 tests and 12 skipped.
+  - `.venv/bin/pytest -q` passed with 204 tests and 12 skipped after the integrated setup-flow update.
