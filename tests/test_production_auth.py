@@ -123,7 +123,7 @@ def test_login_cookie_allows_device_settings_page(
     )
 
     assert response.status_code == 200
-    assert "Connect a local collector." in response.text
+    assert "Connect your coding agent." in response.text
 
 
 def test_login_rejects_invalid_token(

@@ -624,6 +624,57 @@ summary {
   margin-bottom: 14px;
 }
 
+.onboarding-steps {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: setup-step;
+}
+
+.onboarding-steps li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  counter-increment: setup-step;
+}
+
+.onboarding-steps li::before {
+  content: counter(setup-step);
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-subtle);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.onboarding-steps strong,
+.onboarding-steps span {
+  grid-column: 2;
+}
+
+.onboarding-steps strong {
+  margin-bottom: -8px;
+}
+
+.onboarding-steps span,
+.small-copy,
+.privacy-note {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.privacy-note {
+  margin-top: 14px;
+}
+
 .device-form {
   display: grid;
   grid-template-columns: minmax(0, 320px) auto;

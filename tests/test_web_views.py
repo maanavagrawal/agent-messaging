@@ -166,6 +166,22 @@ def test_device_settings_page_requires_dashboard_auth(client: TestClient) -> Non
     assert response.status_code == 401
 
 
+def test_device_settings_page_explains_first_time_setup(client: TestClient) -> None:
+    response = client.get(
+        "/settings/devices",
+        headers={**auth_headers(), "Accept": "text/html"},
+    )
+
+    assert response.status_code == 200
+    assert "Connect your coding agent." in response.text
+    assert "First-time setup" in response.text
+    assert "Create a device token" in response.text
+    assert "Run the install command inside your repo" in response.text
+    assert "Start capture" in response.text
+    assert "Use Claude Code in that repo" in response.text
+    assert "Device tokens can only submit collector events." in response.text
+
+
 def test_device_settings_page_creates_token_once(
     client: TestClient,
     db_session: Session,
@@ -181,6 +197,7 @@ def test_device_settings_page_creates_token_once(
     assert "curl -fsSL" in created.text
     assert "/install.sh | bash -s --" in created.text
     assert f"--token {DEVICE_TOKEN_PREFIX}" in created.text
+    assert "Add <code>--background</code>" in created.text
 
     device_token = db_session.scalar(
         select(DeviceToken).where(DeviceToken.name == "Jason MacBook Pro")
