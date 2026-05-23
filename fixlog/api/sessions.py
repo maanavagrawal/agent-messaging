@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload, selectinload
 
 from fixlog.auth.collector import (
@@ -43,28 +44,22 @@ def start_session(
     db: Session = Depends(get_db),
 ) -> SessionStartResponse:
     account = auth.account
+    account_id = account.id
     now = utc_now()
-    persona_id = persona_id_for(account.id, payload.model_name, payload.harness_name)
-    persona = db.scalar(
-        select(AgentPersona).where(
-            AgentPersona.account_id == account.id,
-            AgentPersona.model_name == payload.model_name,
-            AgentPersona.harness_name == payload.harness_name,
-        )
+    persona = _get_or_create_persona(
+        db,
+        account_id=account_id,
+        model_name=payload.model_name,
+        harness_name=payload.harness_name,
+        now=now,
     )
-    if persona is None:
-        persona = AgentPersona(
-            id=persona_id,
-            account_id=account.id,
-            display_name=display_name_for_persona(persona_id),
-            model_name=payload.model_name,
-            harness_name=payload.harness_name,
-            first_seen=now,
-            last_seen=now,
-        )
-        db.add(persona)
-    else:
+    existing_session = _session_for_source(db, persona=persona, payload=payload)
+    if existing_session is not None:
+        existing_session.last_heartbeat = now
         persona.last_seen = now
+        mark_device_token_used(auth)
+        db.commit()
+        return _session_start_response(existing_session, persona)
 
     session = AgentSession(
         persona=persona,
@@ -78,8 +73,15 @@ def start_session(
     db.commit()
     db.refresh(session)
     logger.info(
-        "session created id=%s persona=%s account=%s", session.id, persona.id, account.id
+        "session created id=%s persona=%s account=%s", session.id, persona.id, account_id
     )
+    return _session_start_response(session, persona)
+
+
+def _session_start_response(
+    session: AgentSession,
+    persona: AgentPersona,
+) -> SessionStartResponse:
     return SessionStartResponse(
         session_id=session.id,
         persona_id=persona.id,
@@ -87,6 +89,65 @@ def start_session(
         account_reputation=0.0,
         persona_reputation=0.0,
     )
+
+
+def _session_for_source(
+    db: Session,
+    *,
+    persona: AgentPersona,
+    payload: SessionStartRequest,
+) -> AgentSession | None:
+    if payload.source_tool is None or payload.source_tool_session_id is None:
+        return None
+    return db.scalar(
+        select(AgentSession)
+        .where(
+            AgentSession.persona_id == persona.id,
+            AgentSession.source_tool == payload.source_tool,
+            AgentSession.source_tool_session_id == payload.source_tool_session_id,
+        )
+        .order_by(AgentSession.started_at.desc())
+    )
+
+
+def _get_or_create_persona(
+    db: Session,
+    *,
+    account_id: UUID,
+    model_name: str,
+    harness_name: str,
+    now: datetime,
+) -> AgentPersona:
+    stmt = select(AgentPersona).where(
+        AgentPersona.account_id == account_id,
+        AgentPersona.model_name == model_name,
+        AgentPersona.harness_name == harness_name,
+    )
+    persona = db.scalar(stmt)
+    if persona is not None:
+        persona.last_seen = now
+        return persona
+
+    persona_id = persona_id_for(account_id, model_name, harness_name)
+    persona = AgentPersona(
+        id=persona_id,
+        account_id=account_id,
+        display_name=display_name_for_persona(persona_id),
+        model_name=model_name,
+        harness_name=harness_name,
+        first_seen=now,
+        last_seen=now,
+    )
+    try:
+        with db.begin_nested():
+            db.add(persona)
+            db.flush()
+    except IntegrityError:
+        persona = db.scalar(stmt)
+        if persona is None:
+            raise
+        persona.last_seen = now
+    return persona
 
 
 @router.post("/{session_id}/heartbeat", response_model=SessionHeartbeatResponse)

@@ -533,3 +533,22 @@
   - `.venv/bin/pytest tests/test_production_auth.py tests/test_web_views.py tests/test_install_script.py -q` passed with 46 tests.
   - `.venv/bin/pytest -q` passed with 220 tests and 12 skipped.
   - Refreshed local preview on `http://127.0.0.1:8099`; `/` and `/agent` returned 200, `/skill.md` returned 200 with the token export command, `/search/errors` and `/settings/devices` redirected to login, and a forged Host request to `/skill.md` returned the expected `FIXLOG_PUBLIC_URL` configuration error.
+
+# Production Session Start 500
+
+## User-Reported Failure
+- [x] Investigate `fixlog watch` receiving `500 Internal Server Error` from hosted `POST /sessions/start`.
+- [x] Trace collector session-start payload through auth, API route, schema, and database writes.
+- [x] Reproduce the server failure locally with a device token or equivalent auth path.
+- [x] Patch the root cause with a regression test.
+- [x] Run focused tests and full pytest before shipping.
+
+## Review Notes
+- Root cause: concurrent or retried `POST /sessions/start` calls for a fresh account/model/harness persona could both observe no persona row and then race to insert the same `agent_personas` identity. The loser raised a database `UNIQUE constraint failed` error, which surfaced as a 500 to `fixlog watch`.
+- The session-start route now creates personas through a savepoint-backed get-or-create helper. If another request wins the insert race, the losing request reloads the persona and continues instead of failing the whole request.
+- `/sessions/start` is now idempotent for collector retries that include `source_tool` and `source_tool_session_id`: a retry returns the existing Fixlog session instead of creating duplicate sessions for the same Claude session.
+- Verification completed:
+  - Reproduced the failure before the fix with a real file-backed SQLite app and concurrent device-token `POST /sessions/start` calls.
+  - `.venv/bin/pytest tests/test_device_tokens.py -q` passed with 6 tests.
+  - `.venv/bin/pytest tests/test_device_tokens.py tests/test_auth.py tests/test_production_auth.py tests/harness/test_watcher_pipeline.py tests/harness/test_cli.py -q` passed with 49 tests.
+  - `.venv/bin/pytest -q` passed with 229 tests and 12 skipped.

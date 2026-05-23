@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Generator
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
 
 from conftest import auth_headers
 from fixlog.auth.collector import DEVICE_TOKEN_PREFIX
+from fixlog.db.models import Account, AgentPersona, Base
+from fixlog.db.seed import token_hash
+from fixlog.db.session import create_fixlog_engine, get_db
+from fixlog.main import create_app
 
 
 def _bearer(token: str, session_id: str | None = None) -> dict[str, str]:
@@ -65,6 +75,83 @@ def test_device_token_can_start_session_and_post_events(client: TestClient) -> N
     )
 
     assert event.status_code == 200
+
+
+def test_device_token_start_session_is_idempotent_for_source_session(
+    client: TestClient,
+) -> None:
+    token = _create_device_token(client)
+    payload = {
+        "model_name": "claude-code",
+        "harness_name": "fixlog-watch",
+        "source_tool": "claude_code",
+        "source_tool_session_id": "claude-session-one",
+    }
+
+    first = client.post("/sessions/start", headers=_bearer(token), json=payload)
+    second = client.post("/sessions/start", headers=_bearer(token), json=payload)
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert second.json()["session_id"] == first.json()["session_id"]
+
+
+def test_concurrent_device_token_starts_do_not_500_on_fresh_persona(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "race.sqlite3"
+    engine = create_fixlog_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(engine)
+    SessionLocal = sessionmaker(
+        bind=engine, autoflush=False, autocommit=False, future=True
+    )
+    with SessionLocal() as session:
+        session.add(Account(api_token_hash=token_hash("token-one"), human_name="Ada"))
+        session.commit()
+
+    app = create_app(seed_accounts=False, start_verifier=False)
+
+    def override_get_db() -> Generator[Session, None, None]:
+        with SessionLocal() as session:
+            yield session
+
+    @contextmanager
+    def auth_session() -> Generator[Session, None, None]:
+        with SessionLocal() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    app.state.session_factory = auth_session
+
+    with TestClient(app, raise_server_exceptions=False) as local_client:
+        token = _create_device_token(local_client)
+        body = {
+            "model_name": "claude-code",
+            "harness_name": "claude-code-log-watcher",
+            "source_tool": "claude_code",
+            "source_tool_session_id": "same-source-session",
+        }
+
+        def start_once() -> tuple[int, str]:
+            response = local_client.post(
+                "/sessions/start",
+                headers=_bearer(token),
+                json=body,
+            )
+            return response.status_code, response.text
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            results = [
+                future.result()
+                for future in as_completed(
+                    [executor.submit(start_once) for _ in range(20)]
+                )
+            ]
+
+    assert [status for status, _text in results] == [200] * 20
+    with SessionLocal() as session:
+        personas = session.scalars(select(AgentPersona)).all()
+    assert len(personas) == 1
 
 
 def test_device_token_cannot_call_account_scoped_endpoints(client: TestClient) -> None:
