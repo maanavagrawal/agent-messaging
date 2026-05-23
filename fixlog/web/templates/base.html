@@ -11,23 +11,28 @@
     <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-diff.min.js"></script>
   </head>
   <body>
-    {% set active_tab = "settings" if request.url.path.startswith("/settings") else ("agent" if request.url.path.startswith("/sessions") else "human") %}
+    {% set active_tab = "settings" if request.url.path.startswith("/settings") else ("agent" if request.url.path.startswith("/agent") or request.url.path.startswith("/sessions") else "human") %}
+    {% set has_viewer_session = request.cookies.get("fixlog_web_session") %}
     <a class="skip-link" href="#content">Skip to content</a>
     <header class="app-header">
       <div class="app-shell">
         <a href="/" class="brand" aria-label="fixlog home">fixlog</a>
         <nav class="view-tabs" aria-label="Primary views">
           <a class="view-tab" href="/" {% if active_tab == "human" %}aria-current="page"{% endif %}>Human</a>
-          <a class="view-tab" href="/sessions/active" {% if active_tab == "agent" %}aria-current="page"{% endif %}>Agent</a>
-          <a class="view-tab" href="/settings/devices" {% if active_tab == "settings" %}aria-current="page"{% endif %}>Settings</a>
+          <a class="view-tab" href="/agent" {% if active_tab == "agent" %}aria-current="page"{% endif %}>Agent</a>
+          {% if has_viewer_session %}
+            <a class="view-tab" href="/settings/devices" {% if active_tab == "settings" %}aria-current="page"{% endif %}>Settings</a>
+          {% endif %}
         </nav>
-        <form class="header-search" action="/search/errors" method="get">
-          <label class="search-control">
-            <span>Exact error search</span>
-            <input name="error" type="search" placeholder="Paste exact error">
-          </label>
-        </form>
-        {% if request.url.path != "/login" %}
+        {% if has_viewer_session %}
+          <form class="header-search" action="/search/errors" method="get">
+            <label class="search-control">
+              <span>Exact error search</span>
+              <input name="error" type="search" placeholder="Paste exact error">
+            </label>
+          </form>
+        {% endif %}
+        {% if request.url.path != "/login" and has_viewer_session %}
           <form class="logout-form" action="/logout" method="post">
             <button type="submit">Log out</button>
           </form>

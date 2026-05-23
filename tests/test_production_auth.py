@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import auth_headers, start_session
+from conftest import auth_headers, create_entry, create_question, start_session
 from fixlog.auth.collector import DEVICE_TOKEN_PREFIX
 from fixlog.config import get_settings
 from fixlog.main import create_app
@@ -43,6 +43,81 @@ def test_install_script_is_public_when_auth_required(
     assert "fixlog collector installed and connected" in response.text
 
 
+def test_agent_onboarding_is_public_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get("/agent", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "Send your coding agent to Fixlog." in response.text
+    assert "Read http://testserver/skill.md" in response.text
+    assert "Open agent skill" in response.text
+    assert "View forum" in response.text
+    assert "I'm a Human" not in response.text
+    assert "Log out" not in response.text
+    assert 'href="/settings/devices"' not in response.text
+    assert "Exact error search" not in response.text
+
+
+def test_agent_skill_is_public_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get("/skill.md")
+
+    assert response.status_code == 200
+    assert "text/markdown" in response.headers["content-type"]
+    assert "# Fixlog Agent Setup Skill" in response.text
+    assert "FIXLOG_DEVICE_TOKEN" in response.text
+    assert (
+        "export FIXLOG_DEVICE_TOKEN='<paste-flxdt-device-token-here>'"
+        in response.text
+    )
+    assert "curl -fsSL http://testserver/install.sh" in response.text
+    assert "Do not ask for the human dashboard token." in response.text
+
+
+def test_agent_skill_defaults_scheme_less_public_url_to_https(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    require_auth: None,
+) -> None:
+    monkeypatch.setenv("FIXLOG_PUBLIC_URL", "fixlog.example")
+    get_settings.cache_clear()
+
+    response = client.get("/skill.md")
+
+    assert response.status_code == 200
+    assert "https://fixlog.example/install.sh" in response.text
+
+
+def test_agent_skill_uses_configured_public_url_instead_of_host_header(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    require_auth: None,
+) -> None:
+    monkeypatch.setenv("FIXLOG_PUBLIC_URL", "https://fixlog.example")
+    get_settings.cache_clear()
+
+    response = client.get("/skill.md", headers={"host": "evil.example"})
+
+    assert response.status_code == 200
+    assert "https://fixlog.example/install.sh" in response.text
+    assert "evil.example" not in response.text
+
+
+def test_agent_skill_rejects_untrusted_host_without_configured_public_url(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get("/skill.md", headers={"host": "evil.example"})
+
+    assert response.status_code == 500
+    assert "FIXLOG_PUBLIC_URL is required" in response.text
+    assert "evil.example" not in response.text
+
+
 def test_auth_required_requires_web_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FIXLOG_AUTH_REQUIRED", "true")
     monkeypatch.delenv("FIXLOG_WEB_SECRET_KEY", raising=False)
@@ -54,7 +129,90 @@ def test_auth_required_requires_web_secret(monkeypatch: pytest.MonkeyPatch) -> N
     get_settings.cache_clear()
 
 
-def test_auth_required_redirects_html_dashboard(
+def test_human_forum_is_public_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get(
+        "/",
+        headers={"Accept": "text/html"},
+    )
+
+    assert response.status_code == 200
+    assert "Fixlog forum." in response.text
+    assert "Human" in response.text
+    assert "Agent" in response.text
+    assert "Settings" not in response.text
+
+
+def test_feed_partial_is_public_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get(
+        "/partials/feed-list",
+        headers={"Accept": "text/html"},
+    )
+
+    assert response.status_code == 200
+    assert response.text.strip().startswith("<ul")
+
+
+def test_search_errors_still_requires_auth_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get(
+        "/search/errors?error=Traceback",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/login?next=")
+
+
+def test_forum_detail_pages_redirect_to_login_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    session = start_session(client)
+    entry = create_entry(client, session["session_id"])
+    question = create_question(client, session["session_id"])
+
+    entry_response = client.get(
+        f"/entries/{entry['id']}",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+    question_response = client.get(
+        f"/questions/{question['id']}",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+
+    assert entry_response.status_code == 303
+    assert entry_response.headers["location"].startswith("/login?next=")
+    assert question_response.status_code == 303
+    assert question_response.headers["location"].startswith("/login?next=")
+
+
+def test_forum_json_details_still_require_auth_when_auth_required(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    session = start_session(client)
+    entry = create_entry(client, session["session_id"])
+
+    response = client.get(
+        f"/entries/{entry['id']}",
+        headers={"Accept": "application/json"},
+    )
+
+    assert response.status_code == 401
+
+
+def test_auth_required_redirects_raw_session_dashboard(
     client: TestClient,
     require_auth: None,
 ) -> None:
@@ -66,6 +224,54 @@ def test_auth_required_redirects_html_dashboard(
 
     assert response.status_code == 303
     assert response.headers["location"].startswith("/login?next=")
+
+
+def test_auth_required_redirects_settings_to_login(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get(
+        "/settings/devices",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/login?next=%2Fsettings%2Fdevices"
+
+
+def test_login_page_explains_local_install_setup(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get("/login", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "Connect a local agent." in response.text
+    assert "The human forum is open" in response.text
+    assert "Dashboard access code" in response.text
+    assert "API token" not in response.text
+    assert 'href="/settings/devices"' not in response.text
+    assert "Local install flow" in response.text
+    assert "Read the forum without signing in" in response.text
+    assert "Create a setup command" in response.text
+    assert "cd /path/to/your/repo" in response.text
+    assert "/install.sh | bash -s -- --token" in response.text
+    assert "~/.fixlog/bin/fixlog watch" in response.text
+
+
+def test_login_defaults_to_device_setup(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.post(
+        "/login",
+        data={"access_code": "token-one"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/settings/devices"
 
 
 def test_auth_required_rejects_json_without_token(
@@ -93,7 +299,7 @@ def test_login_sets_cookie_and_allows_dashboard(
 ) -> None:
     login = client.post(
         "/login",
-        data={"token": "token-one", "next": "/sessions/active"},
+        data={"access_code": "token-one", "next": "/sessions/active"},
         follow_redirects=False,
     )
     assert login.status_code == 303
@@ -112,7 +318,7 @@ def test_login_cookie_allows_device_settings_page(
 ) -> None:
     login = client.post(
         "/login",
-        data={"token": "token-one", "next": "/settings/devices"},
+        data={"access_code": "token-one", "next": "/settings/devices"},
         follow_redirects=False,
     )
     assert login.status_code == 303
@@ -124,19 +330,49 @@ def test_login_cookie_allows_device_settings_page(
 
     assert response.status_code == 200
     assert "Connect your coding agent." in response.text
+    assert 'href="/settings/devices"' in response.text
+    assert "Exact error search" in response.text
+    assert "Log out" in response.text
 
 
-def test_login_rejects_invalid_token(
+def test_login_trims_dashboard_access_code(
     client: TestClient,
     require_auth: None,
 ) -> None:
     response = client.post(
         "/login",
-        data={"token": "wrong", "next": "/"},
+        data={"access_code": "  token-one  ", "next": "/sessions/active"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/sessions/active"
+
+
+def test_login_rejects_invalid_access_code(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.post(
+        "/login",
+        data={"access_code": "wrong", "next": "/"},
     )
 
     assert response.status_code == 401
-    assert "That token was not accepted." in response.text
+    assert "That access code was not recognized." in response.text
+
+
+def test_login_does_not_accept_display_name_as_access_code(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.post(
+        "/login",
+        data={"access_code": "Ada", "next": "/"},
+    )
+
+    assert response.status_code == 401
+    assert "That access code was not recognized." in response.text
 
 
 def test_session_events_page_allows_logged_in_dashboard_view(
@@ -156,7 +392,7 @@ def test_session_events_page_allows_logged_in_dashboard_view(
     assert event_response.status_code == 200
     login = client.post(
         "/login",
-        data={"token": "token-two", "next": "/"},
+        data={"access_code": "token-two", "next": "/"},
         follow_redirects=False,
     )
     assert login.status_code == 303

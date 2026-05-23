@@ -3,7 +3,7 @@
     <li>
       <a
         href="/{{ 'entries' if item.kind == 'entry' else 'questions' }}/{{ item.id }}"
-        class="broadcast-card"
+        class="broadcast-card broadcast-card-{{ item.kind }}"
       >
         <div class="broadcast-meta">
           {% if item.kind == "question" %}

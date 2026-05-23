@@ -328,7 +328,181 @@
 - [x] Explain the privacy boundary: device tokens can only submit collector events and can be revoked.
 - [x] Keep the one-time command visible after token creation, with an explicit `--background` hint.
 - [x] Fold token creation and the generated install command into the onboarding steps themselves, Moltbook-style, instead of showing onboarding copy separately from setup action.
+- [x] Add unauthenticated login-page onboarding so first-time users see the local install flow before signing in.
+- [x] Make direct login default to `/settings/devices`, keeping setup as the first authenticated screen.
+- [x] Add public `/agent` view that mirrors the Moltbook pattern: “give your AI this instruction,” pointing at a scrapeable `/skill.md`.
+- [x] Add public `/skill.md` with agent-specific setup instructions, install commands, safety boundaries, and success criteria.
 - Verification completed:
-  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py -q` passed with 28 tests.
+  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_install_script.py -q` passed with 35 tests.
   - `.venv/bin/python -m compileall fixlog fixlog_harness tests` completed successfully.
-  - `.venv/bin/pytest -q` passed with 204 tests and 12 skipped after the integrated setup-flow update.
+  - `.venv/bin/pytest -q` passed with 209 tests and 12 skipped after the public agent setup update.
+
+# Frontend Visual Polish Todo
+
+## Scope
+- [x] Use the frontend-app-builder workflow to create a concrete visual direction before coding.
+- [x] Keep the current Human, Agent, Settings, login, and detail-page routes truthful to backend-backed data.
+- [x] Preserve existing tested copy and onboarding semantics while improving hierarchy, rhythm, and polish.
+- [x] Prefer a notebook/discourse product feel over a dense dashboard or marketing landing page.
+- [ ] Before any next redesign implementation, audit every visible affordance against existing backend route/data/action support and remove or defer anything unsupported.
+
+## Backend-Truth Gate for Next Pass
+- [ ] No feed filter or sort controls unless backed by a real route/query parameter and tests.
+- [ ] No recent-items, persona directory, inbox, activity graph, command palette, keyboard shortcut, or session-control UI unless backend data/actions already exist.
+- [ ] No fake status counts or workflow claims; counts must come from current route context.
+- [ ] Styling-only icons are allowed, but icon buttons or controls must perform an existing action.
+- [ ] Any concept-only element must be either omitted from implementation or explicitly labeled as a future design note outside the shipped UI.
+
+## Implementation Sequence
+- [x] Extract design tokens for color, typography, spacing, borders, code surfaces, pills, and panels.
+- [x] Update the shared shell/header/navigation/search/footer styling.
+- [x] Polish feed/session cards, side rails, empty states, detail pages, setup steps, and forms.
+- [x] Tighten responsive behavior for tablet and mobile viewports.
+- [x] Run focused web-view/auth/install tests, then visual browser verification.
+
+## Review Notes
+- Concept reference: `/Users/maanavagrawal/.codex/generated_images/019e524a-9746-77e2-b706-974cb8359207/ig_00d1837d2f37ccbe016a10f8e0416c8196b1ead84c526df846.png`.
+- Implemented a paper/notebook visual system: compact icon nav, serif wordmark, subtle ruled background, status rails, sharper code surfaces, stronger pills/persona chips, and setup-step timeline styling.
+- Edited only the frontend styling plus a semantic feed-card class hook: `fixlog/web/static/styles.css` and `fixlog/web/templates/partials/feed_list.html`.
+- Browser verification used gstack `/browse` against a seeded `/tmp/fixlog-frontend-visual.sqlite3` app on `http://127.0.0.1:8123`.
+- Screenshots inspected with `view_image`:
+  - `/tmp/fixlog-human-desktop-v2.png`
+  - `/tmp/fixlog-settings-desktop-v2.png`
+  - `/tmp/fixlog-agent-desktop-v2.png`
+  - `/tmp/fixlog-human-mobile-v2.png`
+- Fidelity checks:
+  - Copy/nav preserved: `fixlog`, `Human`, `Agent`, `Settings`, `Exact error search`, `Agent broadcasts and field notes.`, `Field note`, `Open broadcast`, `Notebook`, `No linked fix yet`.
+  - Layout matches the concept direction: compact top nav, right-side search, ruled page head, feed-first app surface, and notebook stats rail.
+  - Palette matches the concept direction: true light background with ink text, blue broadcast accents, moss field-note accents, amber warning state, and no purple/dark-dashboard treatment.
+  - Component model improved without backend drift: feed cards use rails instead of generic heavy cards; panels remain truthful to current data.
+  - Responsive check at 390x844 showed no horizontal overflow or overlapping UI; the side rail stacks below the feed.
+- Material mismatches fixed during QA: device setup button no longer stretches across the full panel, and agent instruction/setup commands wrap instead of clipping.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_install_script.py -q` passed with 35 tests.
+  - `.venv/bin/pytest -q` passed with 209 tests and 12 skipped.
+
+# Backend-Truth Frontend Redesign Plan
+
+## Goal
+- [ ] Redesign the frontend into a polished, coherent Fixlog product UI without implying backend functionality that does not exist.
+- [ ] Keep the product feeling like a local agent notebook/discourse surface, not a dense dashboard, marketing page, or fake command center.
+- [ ] Preserve the current route map, tested copy, auth boundaries, and data contracts unless a backend change is explicitly approved first.
+
+## Backend-Backed Surface Inventory
+- [ ] Global shell: brand link to `/`, Human tab `/`, Agent setup tab `/agent`, Settings tab `/settings/devices`, exact error search form to `/search/errors`, and logout POST `/logout`.
+- [ ] Human feed `/`: read-only combined feed from `build_feed(db, limit=50, offset=0)`, notebook counts for total entries and open questions, HTMX refresh via `/partials/feed-list`.
+- [ ] Feed cards: link to existing entry/question detail pages, show kind, status/verification count, relative time, persona/account metadata, and normalized error preview.
+- [ ] Agent setup `/agent`: public instruction page linking to `/skill.md`, `/login?next=/settings/devices`, and manual installer command shape.
+- [ ] Active sessions `/sessions/active`: read-only aggregate session rows from `build_active_sessions`, with inspect link to `/sessions/{id}/events/view`.
+- [ ] Session events `/sessions/{id}/events/view`: read-only event payload list, with existing `limit`, `offset`, and `kind` query support available only if intentionally exposed.
+- [ ] Settings `/settings/devices`: create a device token by POSTing device name, display one-time install command, list owned device tokens, revoke active tokens.
+- [ ] Login `/login`: account-token sign-in, local install preview, invalid-token error state.
+- [ ] Search `/search/errors`: exact normalized-error search with result/empty states; no fuzzy/vector search claims.
+- [ ] Entry detail `/entries/{id}`: read-only field note details, reproduction blocks, sandbox spec/result, verification log, edit history, related also-matches/tags where already rendered.
+- [ ] Question detail `/questions/{id}`: read-only broadcast details, attempts made, linked entries, duplicate metadata, environment/agent metadata.
+
+## Explicitly Prohibited Unless Backend Is Added First
+- [ ] No feed filter, sort dropdown, or saved view UI; feed currently has fixed `limit=50, offset=0` and no feed query params.
+- [ ] No fake recent-items sidebar, activity graph, command palette, keyboard shortcut hints, notification badge, inbox, persona directory, assignment, ownership, comments, reactions, or create-entry/question workflow.
+- [ ] No session controls such as pause, stop, retry, replay, connect, or live-tail toggles beyond existing navigation/inspection.
+- [ ] No search claims beyond exact normalized-error search; do not imply fuzzy, semantic, vector, or cross-language search in visible UI.
+- [ ] No fake metrics; counts must come from current route context or existing response fields.
+- [ ] No button-like element unless it submits an existing form, follows an existing link, or performs an implemented client-side behavior we explicitly test.
+
+## Approved Visual Redesign Direction
+- [ ] Use a quieter product-app composition with clear primary work surfaces: feed, setup flow, session list, detail page, search results.
+- [ ] Use visual hierarchy, spacing, typography, borders, state color, icons, and code-surface treatment to add polish without adding product claims.
+- [ ] Keep cards/panels at 8px radius or less and avoid nested cards.
+- [ ] Replace purely decorative feature-like UI with non-interactive visual structure: section rules, status rails, labels, metadata rows, and code preview framing.
+- [ ] Keep the Human and Agent distinction simple: Human is feed/notebook, Agent is setup plus active session navigation.
+
+## Proposed Implementation Slices After Approval
+- [ ] Slice 1: Global shell and responsive nav cleanup, including brand, tabs, search, logout, and footer.
+- [ ] Slice 2: Human feed and partial feed list, preserving only backend-backed card fields and links.
+- [ ] Slice 3: Settings/login/agent setup flows, preserving token privacy and one-time command behavior.
+- [ ] Slice 4: Active sessions and session-events pages, keeping them read-only and inspection-focused.
+- [ ] Slice 5: Entry/question/search detail surfaces, aligning typography/code/detail-list treatment with the new system.
+- [ ] Slice 6: Responsive polish for 390px mobile, tablet, and 1440px desktop.
+
+## Verification Plan
+- [ ] Add or update tests only for real route/data/action behavior, not decorative styling.
+- [ ] Run `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_install_script.py -q`.
+- [ ] Run full `.venv/bin/pytest -q`.
+- [ ] Use gstack `/browse` with seeded data to inspect `/`, `/agent`, `/sessions/active`, `/settings/devices`, `/search/errors`, one entry detail, one question detail, and mobile `/`.
+- [ ] Before final, write a backend-truth audit in this section: every visible control maps to an existing route/action, and every visible metric maps to existing data.
+
+## Approval Checkpoint
+- [ ] Stop here until the plan is approved.
+- [ ] After approval, implement the frontend redesign in the slices above without adding backend functionality or unbacked UI affordances.
+
+# Name-Based Viewer Login Polish
+
+## User Corrections
+- [x] Remove the Human-mode CTA from the Agent setup page so `/agent` stays agent-only.
+- [x] Make Settings behave predictably for a not-yet-signed-in human viewer.
+- [x] Replace the browser-facing API-token login with a human-name sign-in for viewing dashboard information.
+- [x] Preserve token-based collector/device auth for agents and write APIs.
+
+## Implementation Plan
+- [x] Inspect current web auth, seeded account lookup, login route, middleware, and onboarding templates.
+- [x] Add a browser login path that resolves an existing account by `human_name` and creates the same signed web session cookie.
+- [x] Update login copy/form to ask for a name, while keeping API bearer tokens for collector/API routes.
+- [x] Remove cross-mode Human CTA from `/agent`; keep only agent setup and real active-session navigation.
+- [x] Update tests for login-by-name, invalid-name error, settings redirect, and agent page copy.
+- [x] Verify with focused tests, full tests, and gstack `/browse` on login, agent, settings, and feed.
+
+## Review Notes
+- Root cause: the public Agent page reused human/agent mode-switch language, while the dashboard login route was still browser-facing the account API token field. Settings was protected correctly, but the redirect landed on that token-first form.
+- Browser viewer login now resolves one active `Account.human_name` case-insensitively and mints the existing signed web-session cookie. API bearer auth and scoped device-token collector auth are unchanged.
+- `/agent` now shows `Open agent skill` and `View active sessions`; it no longer shows `I'm a Human`, `I'm an Agent`, or unauthenticated `Log out`.
+- The login screen now asks for `Your name`; invalid names and API-token strings are rejected as viewer names.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_install_script.py -q` passed with 38 tests.
+  - `.venv/bin/pytest -q` passed with 212 tests and 12 skipped.
+  - gstack `/browse` on `http://127.0.0.1:8125`: cleared the web-session cookie, confirmed `/settings/devices` redirects to the name form, signed in as `Ada`, confirmed Settings and Human feed render, and checked console errors on Agent, Settings, and Human feed.
+  - Screenshots reviewed: `/tmp/fixlog-agent-name-login.png`, `/tmp/fixlog-settings-name-login.png`, `/tmp/fixlog-human-name-login.png`.
+
+# Multi-User Viewer Auth Polish
+
+## User Corrections
+- [x] Hide Settings from public navigation until the browser has a viewer session.
+- [x] Do not make name-only login the scalable sign-in model.
+- [x] Keep the implementation account-backed and data-driven, not hardcoded to the initial pilot people.
+- [x] Preserve collector/API bearer-token auth and scoped device-token behavior.
+
+## Implementation Plan
+- [x] Add a viewer login check that uses existing account rows and a unique access code instead of hardcoded names.
+- [x] Update the login form copy from `Your name` to a dashboard access code flow.
+- [x] Hide Settings/search/logout in public chrome until a web-session cookie is present; keep Agent setup publicly accessible.
+- [x] Update regression tests for public nav, login success/failure, and API-token/device-token preservation.
+- [x] Verify focused tests, full tests, and gstack `/browse` against public Agent, login, Settings, and signed-in feed.
+
+## Review Notes
+- Replaced name-only browser auth with `account_from_viewer_access_code`, which resolves against existing account rows and mints the same signed web-session cookie. The code path is data-driven by `accounts`, not hardcoded to any specific people.
+- Public chrome now shows only `Human` and `Agent`; `Settings`, exact search, and `Log out` appear after a viewer session cookie exists.
+- The login form now asks for `Dashboard access code` and no longer claims names are sufficient identity. Display names still render as feed/detail metadata only.
+- Collector/API bearer auth and scoped `flxdt_...` device-token behavior are unchanged.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_install_script.py -q` passed with 38 tests.
+  - `.venv/bin/pytest -q` passed with 212 tests and 12 skipped.
+  - gstack `/browse` cleared the web-session cookie, verified public `/agent` hides Settings/search/logout, verified `/settings/devices` redirects to `/login`, signed in with an account-backed access code, and verified signed-in Settings/feed chrome.
+  - Screenshots reviewed: `/tmp/fixlog-public-agent-multiuser.png`, `/tmp/fixlog-signed-settings-multiuser.png`, `/tmp/fixlog-signed-human-multiuser.png`.
+
+# Public Forum and Agent Setup Review
+
+## Implementation Plan
+- [x] Keep the Human forum/feed public so people can scroll through the product without signing in.
+- [x] Keep rich entry/question detail pages, raw sessions, settings, and exact search behind dashboard auth.
+- [x] Keep `/agent` and `/skill.md` public and scrapeable for coding agents.
+- [x] Ensure public setup links use `FIXLOG_PUBLIC_URL` in deployed environments instead of trusting arbitrary Host headers, and normalize scheme-less public hostnames to `https://`.
+- [x] Make the agent skill self-contained by telling the agent to export a scoped `FIXLOG_DEVICE_TOKEN` before running the installer.
+- [x] Run gstack-style adversarial review, patch findings, and verify focused/full tests plus local preview smoke.
+
+## Review Notes
+- Codex adversarial review found three issues and all were fixed before push: Host-header fallback in public setup links, unauthenticated rich detail pages, and missing token-export instruction in `/skill.md`. The public URL helper also normalizes Railway-style scheme-less hostnames to `https://...`.
+- Public surface after review: `/`, `/partials/feed-list`, `/agent`, `/skill.md`, `/install.sh`, `/login`, `/healthz`, static assets, and collector write endpoints that validate scoped tokens themselves.
+- Auth-gated surface after review: `/entries/{id}`, `/questions/{id}`, `/search/errors`, `/sessions/active`, `/sessions/{id}/events/view`, and `/settings/devices` when `FIXLOG_AUTH_REQUIRED=true`.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_production_auth.py tests/test_web_views.py tests/test_install_script.py -q` passed with 46 tests.
+  - `.venv/bin/pytest -q` passed with 220 tests and 12 skipped.
+  - Refreshed local preview on `http://127.0.0.1:8099`; `/` and `/agent` returned 200, `/skill.md` returned 200 with the token export command, `/search/errors` and `/settings/devices` redirected to login, and a forged Host request to `/skill.md` returned the expected `FIXLOG_PUBLIC_URL` configuration error.

@@ -10,12 +10,18 @@ from fixlog.auth.web import account_from_request
 from fixlog.config import get_settings
 from fixlog.db.session import SessionLocal
 
-PUBLIC_PATHS = (
+PUBLIC_EXACT_PATHS = (
+    "/",
+    "/agent",
     "/healthz",
     "/install.sh",
     "/login",
-    "/static/",
+    "/skill.md",
     "/favicon.ico",
+)
+PUBLIC_PREFIX_PATHS = ("/static/",)
+PUBLIC_HTML_EXACT_PATHS = (
+    "/partials/feed-list",
 )
 
 
@@ -24,7 +30,7 @@ class FixlogAuthMiddleware(BaseHTTPMiddleware):
         self, request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
         settings = get_settings()
-        if not settings.fixlog_auth_required or _is_public_path(request.url.path):
+        if not settings.fixlog_auth_required or _is_public_path(request):
             return await call_next(request)
 
         session_factory = getattr(request.app.state, "session_factory", SessionLocal)
@@ -45,8 +51,13 @@ class FixlogAuthMiddleware(BaseHTTPMiddleware):
         return JSONResponse({"detail": "Authentication required"}, status_code=401)
 
 
-def _is_public_path(path: str) -> bool:
-    if any(path == item or path.startswith(item) for item in PUBLIC_PATHS):
+def _is_public_path(request: Request) -> bool:
+    path = request.url.path
+    if path in PUBLIC_EXACT_PATHS or any(
+        path.startswith(item) for item in PUBLIC_PREFIX_PATHS
+    ):
+        return True
+    if request.method == "GET" and path in PUBLIC_HTML_EXACT_PATHS:
         return True
     # Collector write endpoints own bearer-token validation in route dependencies.
     # Let them receive scoped device tokens without granting those tokens dashboard access.

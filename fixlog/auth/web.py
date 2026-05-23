@@ -48,6 +48,16 @@ def account_from_request(
     return account_from_web_cookie(cookie_value, db, settings)
 
 
+def account_from_viewer_access_code(access_code: str, db: Session) -> Account | None:
+    cleaned_code = access_code.strip()
+    if not cleaned_code:
+        return None
+    try:
+        return account_from_authorization(f"Bearer {cleaned_code}", db)
+    except HTTPException:
+        return None
+
+
 def account_from_web_cookie(
     cookie_value: str,
     db: Session,
