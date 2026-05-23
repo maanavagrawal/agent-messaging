@@ -4,7 +4,7 @@ import shlex
 
 
 def build_collector_install_script(*, base_url: str, package_url: str) -> str:
-    base_url_literal = shlex.quote(base_url.rstrip("/"))
+    base_url_literal = shlex.quote(normalize_public_url(base_url))
     package_url_literal = shlex.quote(package_url)
     return f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -93,6 +93,18 @@ if [ -z "$TOKEN" ]; then
   exit 2
 fi
 
+case "$FIXLOG_BASE_URL" in
+  http://*|https://*)
+    ;;
+  localhost:*|127.*|0.0.0.0:*)
+    FIXLOG_BASE_URL="http://$FIXLOG_BASE_URL"
+    ;;
+  *)
+    FIXLOG_BASE_URL="https://$FIXLOG_BASE_URL"
+    ;;
+esac
+FIXLOG_BASE_URL="${{FIXLOG_BASE_URL%/}}"
+
 if ! command -v python3 >/dev/null 2>&1; then
   echo "error: python3 is required to install the fixlog collector" >&2
   exit 1
@@ -132,3 +144,14 @@ Optional PATH setup:
 
 DONE
 """
+
+
+def normalize_public_url(value: str) -> str:
+    normalized = value.strip().rstrip("/")
+    if not normalized:
+        raise ValueError("public URL is required")
+    if normalized.startswith(("http://", "https://")):
+        return normalized
+    if normalized.startswith(("localhost:", "127.", "0.0.0.0:")):
+        return f"http://{normalized}"
+    return f"https://{normalized}"

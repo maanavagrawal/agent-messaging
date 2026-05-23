@@ -59,7 +59,7 @@ from fixlog.schemas.session_event import (
     SessionEventRead,
 )
 from fixlog.web.agent_skill import build_agent_skill_markdown
-from fixlog.web.install_script import build_collector_install_script
+from fixlog.web.install_script import build_collector_install_script, normalize_public_url
 
 router = APIRouter(include_in_schema=False)
 templates = Jinja2Templates(directory="fixlog/web/templates")
@@ -182,9 +182,8 @@ def agent_skill(request: Request) -> PlainTextResponse:
 @router.get("/install.sh", response_class=PlainTextResponse)
 def collector_install_script(request: Request) -> PlainTextResponse:
     settings = get_settings()
-    public_url = settings.fixlog_public_url or str(request.base_url).rstrip("/")
     script = build_collector_install_script(
-        base_url=public_url,
+        base_url=_public_url(request),
         package_url=settings.fixlog_collector_package_url,
     )
     return PlainTextResponse(script, media_type="text/x-shellscript")
@@ -430,9 +429,7 @@ def _device_settings_response(
 def _public_url(request: Request) -> str:
     configured_url = get_settings().fixlog_public_url.rstrip("/")
     if configured_url:
-        if "://" not in configured_url:
-            configured_url = f"https://{configured_url}"
-        return configured_url
+        return normalize_public_url(configured_url)
     hostname = request.url.hostname or ""
     if hostname in {"127.0.0.1", "::1", "localhost", "testserver"}:
         return str(request.base_url).rstrip("/")

@@ -25,6 +25,37 @@ def test_collector_install_script_contains_expected_flow() -> None:
     assert "\"$FIXLOG_BIN_DIR/fixlog\" service install --start" in script
 
 
+def test_collector_install_script_normalizes_host_only_public_url() -> None:
+    script = build_collector_install_script(
+        base_url="agent-messaging-production.up.railway.app",
+        package_url="git+https://github.com/example/fixlog.git@main",
+    )
+
+    assert (
+        "DEFAULT_FIXLOG_BASE_URL=https://agent-messaging-production.up.railway.app"
+        in script
+    )
+
+
+def test_collector_install_script_normalizes_localhost_public_url_to_http() -> None:
+    script = build_collector_install_script(
+        base_url="localhost:8125/",
+        package_url="git+https://github.com/example/fixlog.git@main",
+    )
+
+    assert "DEFAULT_FIXLOG_BASE_URL=http://localhost:8125" in script
+
+
+def test_collector_install_script_repairs_host_only_runtime_override() -> None:
+    script = build_collector_install_script(
+        base_url="https://fixlog.example.test",
+        package_url="git+https://github.com/example/fixlog.git@main",
+    )
+
+    assert 'FIXLOG_BASE_URL="https://$FIXLOG_BASE_URL"' in script
+    assert 'FIXLOG_BASE_URL="${FIXLOG_BASE_URL%/}"' in script
+
+
 def test_collector_install_script_is_valid_bash() -> None:
     script = build_collector_install_script(
         base_url="https://fixlog.example.test",

@@ -488,6 +488,33 @@
   - gstack `/browse` cleared the web-session cookie, verified public `/agent` hides Settings/search/logout, verified `/settings/devices` redirects to `/login`, signed in with an account-backed access code, and verified signed-in Settings/feed chrome.
   - Screenshots reviewed: `/tmp/fixlog-public-agent-multiuser.png`, `/tmp/fixlog-signed-settings-multiuser.png`, `/tmp/fixlog-signed-human-multiuser.png`.
 
+# Hosted Collector Base URL Fix
+
+## User-Reported Failure
+- [x] Reproduce the live installer bug where `/install.sh` embeds `DEFAULT_FIXLOG_BASE_URL=agent-messaging-production.up.railway.app` without `https://`.
+- [x] Prevent the installer from writing malformed host-only URLs to `~/.fixlog/config.toml`.
+- [x] Make `fixlog doctor` / `fixlog watch` fail clearly before tailing logs if local config still has a malformed URL.
+- [x] Preserve local development installs with explicit `http://localhost...` URLs.
+
+## Implementation Plan
+- [x] Normalize hosted public URLs used by `/skill.md` and `/install.sh`.
+- [x] Add shell-side URL normalization in the installer for host-only default/override values.
+- [x] Add harness config validation for `FIXLOG_BASE_URL` / `base_url` from local config.
+- [x] Update CLI/install/local-config regression tests.
+- [x] Run focused harness/install tests and full pytest.
+
+## Review Notes
+- Root cause: the production app had `FIXLOG_PUBLIC_URL=agent-messaging-production.up.railway.app` without a scheme. `/skill.md` still showed HTTPS through its public URL helper, but `/install.sh` bypassed that helper and embedded a host-only `DEFAULT_FIXLOG_BASE_URL`. The installer wrote that bad value into `~/.fixlog/config.toml`, so `fixlog watch` later passed a scheme-less URL to httpx.
+- `/install.sh` now uses the same public URL helper as `/skill.md`, and `build_collector_install_script()` normalizes host-only public URLs to `https://...` while preserving localhost as `http://...`.
+- The shell installer also repairs host-only `FIXLOG_BASE_URL` / `--url` values before calling `fixlog connect`, which protects old or manually overridden installs.
+- `fixlog connect`, `fixlog doctor`, and `fixlog watch` now validate `FIXLOG_BASE_URL` / local `base_url` before network activity; malformed configs fail with `must start with http:// or https://` instead of tailing Claude logs and retrying httpx failures.
+- Verification completed:
+  - Live reproduction fetched `https://agent-messaging-production.up.railway.app/install.sh` and confirmed the bad `DEFAULT_FIXLOG_BASE_URL=agent-messaging-production.up.railway.app`.
+  - `.venv/bin/pytest tests/test_install_script.py tests/harness/test_local_config.py tests/harness/test_cli.py tests/test_production_auth.py -q` passed with 41 tests.
+  - `.venv/bin/pytest -q` passed with 227 tests and 12 skipped.
+  - Local review server restarted on `http://127.0.0.1:8125` against `/tmp/fixlog-urlfix-review.sqlite3`; its `/install.sh` now embeds `DEFAULT_FIXLOG_BASE_URL=http://127.0.0.1:8125`.
+  - `env FIXLOG_BASE_URL=agent-messaging-production.up.railway.app .venv/bin/fixlog doctor` now exits 2 with a clear `must start with http:// or https://` message before any network calls.
+
 # Public Forum and Agent Setup Review
 
 ## Implementation Plan

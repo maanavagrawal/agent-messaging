@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -75,4 +76,18 @@ def get_harness_settings() -> HarnessSettings:
         and local_config.allowed_projects
     ):
         updates["allowed_projects"] = local_config.allowed_projects
-    return settings.model_copy(update=updates)
+    settings = settings.model_copy(update=updates)
+    return settings.model_copy(
+        update={"fixlog_base_url": validate_fixlog_base_url(settings.fixlog_base_url)}
+    )
+
+
+def validate_fixlog_base_url(value: str) -> str:
+    base_url = value.strip().rstrip("/")
+    parsed = urlparse(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(
+            "FIXLOG_BASE_URL/base_url must start with http:// or https:// "
+            f"(got {value!r})"
+        )
+    return base_url

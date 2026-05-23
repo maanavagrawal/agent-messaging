@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from fixlog_harness.config import get_harness_settings
 from fixlog_harness.local_config import load_local_config, write_local_config
 
@@ -67,4 +69,29 @@ def test_env_overrides_local_config(tmp_path: Path, monkeypatch) -> None:
 
     assert settings.fixlog_base_url == "https://env.example"
     assert settings.fixlog_api_token == "env-token"
+    get_harness_settings.cache_clear()
+
+
+def test_get_harness_settings_rejects_local_config_base_url_without_scheme(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        "\n".join(
+            [
+                'base_url = "agent-messaging-production.up.railway.app"',
+                'api_token = "flxdt_test"',
+                "allowed_projects = []",
+                "",
+            ]
+        )
+    )
+    monkeypatch.setenv("FIXLOG_CONFIG_PATH", str(config_path))
+    monkeypatch.delenv("FIXLOG_BASE_URL", raising=False)
+    get_harness_settings.cache_clear()
+
+    with pytest.raises(ValueError, match="must start with http:// or https://"):
+        get_harness_settings()
+
     get_harness_settings.cache_clear()

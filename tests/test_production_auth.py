@@ -43,6 +43,26 @@ def test_install_script_is_public_when_auth_required(
     assert "fixlog collector installed and connected" in response.text
 
 
+def test_install_script_normalizes_configured_public_url_without_scheme(
+    client: TestClient,
+    require_auth: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv(
+        "FIXLOG_PUBLIC_URL", "agent-messaging-production.up.railway.app"
+    )
+    get_settings.cache_clear()
+
+    response = client.get("/install.sh")
+
+    assert response.status_code == 200
+    assert (
+        "DEFAULT_FIXLOG_BASE_URL=https://agent-messaging-production.up.railway.app"
+        in response.text
+    )
+    get_settings.cache_clear()
+
+
 def test_agent_onboarding_is_public_when_auth_required(
     client: TestClient,
     require_auth: None,

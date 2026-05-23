@@ -10,7 +10,11 @@ from pathlib import Path
 import httpx
 
 from fixlog_harness.client import FixlogClient
-from fixlog_harness.config import HarnessSettings, get_harness_settings
+from fixlog_harness.config import (
+    HarnessSettings,
+    get_harness_settings,
+    validate_fixlog_base_url,
+)
 from fixlog_harness.harvester import Harvester, load_pending_harvests
 from fixlog_harness.local_config import detect_project_root, write_local_config
 from fixlog_harness.service import (
@@ -64,7 +68,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "service":
         return _service_command(args)
 
-    settings = get_harness_settings()
+    try:
+        settings = get_harness_settings()
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     if args.command == "doctor":
         return _doctor(settings)
 
@@ -174,13 +182,18 @@ def _doctor(settings: HarnessSettings) -> int:
 
 
 def _connect(base_url: str, token: str, project: Path | None) -> int:
+    try:
+        normalized_base_url = validate_fixlog_base_url(base_url)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     project_root = project.expanduser().resolve(strict=False) if project else detect_project_root()
     config_path = write_local_config(
-        base_url=base_url.rstrip("/"),
+        base_url=normalized_base_url,
         api_token=token,
         project=project_root,
     )
-    print(f"connected base_url={base_url.rstrip('/')}")
+    print(f"connected base_url={normalized_base_url}")
     print(f"allowed_project={project_root}")
     print(f"config={config_path}")
     return 0
