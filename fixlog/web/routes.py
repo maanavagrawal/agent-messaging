@@ -33,6 +33,7 @@ from fixlog.auth.collector import generate_device_token
 from fixlog.auth.web import (
     WEB_SESSION_COOKIE,
     account_from_request,
+    account_from_viewer_access_code,
     create_web_session_cookie,
 )
 from fixlog.config import get_settings
@@ -57,6 +58,7 @@ from fixlog.schemas.session_event import (
     SessionEventListResponse,
     SessionEventRead,
 )
+from fixlog.web.agent_skill import build_agent_skill_markdown
 from fixlog.web.install_script import build_collector_install_script
 
 router = APIRouter(include_in_schema=False)
@@ -105,12 +107,16 @@ templates.env.filters["short_id"] = _short_id
 @router.get("/login", response_class=HTMLResponse)
 def login_page(
     request: Request,
-    next: str = "/",
+    next: str = "/settings/devices",
 ) -> HTMLResponse:
     return templates.TemplateResponse(
         request,
         "login.html",
-        {"next_path": _safe_next_path(next), "error": None},
+        {
+            "next_path": _safe_next_path(next),
+            "error": None,
+            "public_url": _public_url(request),
+        },
     )
 
 
@@ -121,22 +127,22 @@ async def login_submit(
 ) -> Response:
     settings = get_settings()
     form = parse_qs((await request.body()).decode("utf-8"), keep_blank_values=True)
-    raw_token = form.get("token", [""])[0].strip()
-    next_path = _safe_next_path(form.get("next", ["/"])[0])
-    try:
-        account = account_from_authorization(f"Bearer {raw_token}", db)
-        cookie_value = create_web_session_cookie(account, settings)
-    except HTTPException:
+    access_code = form.get("access_code", [""])[0].strip()
+    next_path = _safe_next_path(form.get("next", ["/settings/devices"])[0])
+    account = account_from_viewer_access_code(access_code, db)
+    if account is None:
         return templates.TemplateResponse(
             request,
             "login.html",
             {
                 "next_path": next_path,
-                "error": "That token was not accepted.",
+                "error": "That access code was not recognized.",
+                "public_url": _public_url(request),
             },
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
+    cookie_value = create_web_session_cookie(account, settings)
     response = RedirectResponse(next_path, status_code=status.HTTP_303_SEE_OTHER)
     response.set_cookie(
         WEB_SESSION_COOKIE,
@@ -154,6 +160,23 @@ def logout() -> Response:
     response = RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
     response.delete_cookie(WEB_SESSION_COOKIE)
     return response
+
+
+@router.get("/agent", response_class=HTMLResponse)
+def agent_onboarding_page(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request,
+        "agent_onboarding.html",
+        {"public_url": _public_url(request)},
+    )
+
+
+@router.get("/skill.md", response_class=PlainTextResponse)
+def agent_skill(request: Request) -> PlainTextResponse:
+    return PlainTextResponse(
+        build_agent_skill_markdown(public_url=_public_url(request)),
+        media_type="text/markdown",
+    )
 
 
 @router.get("/install.sh", response_class=PlainTextResponse)
@@ -390,7 +413,7 @@ def _device_settings_response(
         .where(DeviceToken.account_id == account.id)
         .order_by(DeviceToken.created_at.desc())
     ).all()
-    public_url = get_settings().fixlog_public_url or str(request.base_url).rstrip("/")
+    public_url = _public_url(request)
     return templates.TemplateResponse(
         request,
         "device_settings.html",
@@ -401,6 +424,21 @@ def _device_settings_response(
             "created_name": created_name,
             "public_url": public_url.rstrip("/"),
         },
+    )
+
+
+def _public_url(request: Request) -> str:
+    configured_url = get_settings().fixlog_public_url.rstrip("/")
+    if configured_url:
+        if "://" not in configured_url:
+            configured_url = f"https://{configured_url}"
+        return configured_url
+    hostname = request.url.hostname or ""
+    if hostname in {"127.0.0.1", "::1", "localhost", "testserver"}:
+        return str(request.base_url).rstrip("/")
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="FIXLOG_PUBLIC_URL is required for public setup links",
     )
 
 

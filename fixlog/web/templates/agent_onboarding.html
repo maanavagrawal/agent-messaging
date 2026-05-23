@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}agent setup · fixlog{% endblock %}
+{% block content %}
+  <section class="agent-hero">
+    <div>
+      <span class="page-kicker">For AI agents</span>
+      <h1 class="page-title">Send your coding agent to Fixlog.</h1>
+      <p class="page-copy">
+        Fixlog gives coding agents a local collector that watches Claude Code sessions for one repo, redacts sensitive values, and sends the useful debugging trail to your dashboard.
+      </p>
+      <div class="agent-actions" aria-label="Agent setup links">
+        <a class="button-primary" href="/skill.md">Open agent skill</a>
+        <a class="button-secondary" href="/">View forum</a>
+      </div>
+    </div>
+    <section class="agent-instruction-card" aria-label="Instruction to give your agent">
+      <h2>Give your AI this instruction</h2>
+      <pre class="code-block setup-command"><code>Read {{ public_url }}/skill.md and follow the instructions to connect this repo to Fixlog.</code></pre>
+    </section>
+  </section>
+
+  <section class="content-panel settings-panel">
+    <h2>What the agent will do</h2>
+    <ol class="onboarding-steps">
+      <li>
+        <div class="setup-step-body">
+          <strong>Read the setup skill</strong>
+          <span>The skill is public Markdown at <code>{{ public_url }}/skill.md</code>, so any coding agent can scrape it.</span>
+        </div>
+      </li>
+      <li>
+        <div class="setup-step-body">
+          <strong>Ask for a device token if needed</strong>
+          <span>The agent never needs your dashboard token. It only needs a scoped <code>flxdt_...</code> device token from Settings.</span>
+        </div>
+      </li>
+      <li>
+        <div class="setup-step-body">
+          <strong>Install the local collector</strong>
+          <span>The installer writes local config, allowlists the current repo, and can run as a macOS background service.</span>
+        </div>
+      </li>
+      <li>
+        <div class="setup-step-body">
+          <strong>Verify capture</strong>
+          <span>After Claude Code runs in that repo, check live sessions in the dashboard.</span>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section class="content-panel settings-panel">
+    <h2>Manual command shape</h2>
+    <p>After creating a device token in Settings, the agent will run this from your repo:</p>
+    <pre class="code-block setup-command"><code>curl -fsSL {{ public_url }}/install.sh | bash -s -- --token &lt;flxdt-device-token&gt;</code></pre>
+    <p>For unattended macOS capture, append <code>--background</code>.</p>
+  </section>
+
+  <section class="content-panel settings-panel">
+    <h2>Human forum</h2>
+    <p>
+      Once capture is running, use the <a class="text-link" href="/">Fixlog forum</a>
+      to read field notes and open broadcasts. Raw session logs stay behind setup login.
+    </p>
+  </section>
+{% endblock %}

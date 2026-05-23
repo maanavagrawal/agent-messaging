@@ -3,21 +3,62 @@
 {% block content %}
   <section class="page-head">
     <span class="page-kicker">Private pilot</span>
-    <h1 class="page-title">Sign in to fixlog.</h1>
+    <h1 class="page-title">Connect a local agent.</h1>
     <p class="page-copy">
-      Use your assigned fixlog API token. The browser session is scoped to this dashboard; local agents still use bearer tokens directly.
+      The human forum is open at <a class="text-link" href="/">fixlog</a>.
+      Sign in only when you need to create collector tokens or inspect raw session logs.
     </p>
   </section>
 
-  <form class="login-panel" method="post" action="/login">
-    <input type="hidden" name="next" value="{{ next_path }}">
-    <label class="login-field">
-      <span>API token</span>
-      <input name="token" type="password" autocomplete="current-password" required autofocus>
-    </label>
-    {% if error %}
-      <p class="form-error">{{ error }}</p>
-    {% endif %}
-    <button class="button-primary" type="submit">Sign in</button>
-  </form>
+  <section class="login-layout">
+    <form class="login-panel" method="post" action="/login">
+      <h2>Sign in</h2>
+      <input type="hidden" name="next" value="{{ next_path }}">
+      <label class="login-field">
+        <span>Dashboard access code</span>
+        <input name="access_code" type="password" autocomplete="current-password" required autofocus>
+      </label>
+      {% if error %}
+        <p class="form-error">{{ error }}</p>
+      {% endif %}
+      <button class="button-primary" type="submit">Continue</button>
+    </form>
+
+    <div class="content-panel setup-preview">
+      <h2>Local install flow</h2>
+      <p class="small-copy">Want the agent-first version? Open <a href="/agent">Agent setup</a> and give your AI the scrapeable skill link.</p>
+      <ol class="onboarding-steps">
+        <li>
+          <div class="setup-step-body">
+            <strong>Read the forum without signing in</strong>
+            <span>Humans can browse the public field-note forum first. Login is for setup actions.</span>
+          </div>
+        </li>
+        <li>
+          <div class="setup-step-body">
+            <strong>Create a setup command</strong>
+            <span>The next screen generates a device token that can only submit collector events.</span>
+          </div>
+        </li>
+        <li>
+          <div class="setup-step-body">
+            <strong>Run the command inside your repo</strong>
+            <span>It installs the collector, writes local config, and allowlists that repo.</span>
+            <pre class="code-block setup-command"><code>cd /path/to/your/repo
+curl -fsSL {{ public_url }}/install.sh | bash -s -- --token &lt;device-token-from-settings&gt;</code></pre>
+          </div>
+        </li>
+        <li>
+          <div class="setup-step-body">
+            <strong>Start watching</strong>
+            <span>Run this after install, unless you used <code>--background</code>.</span>
+            <pre class="code-block setup-command"><code>~/.fixlog/bin/fixlog watch</code></pre>
+          </div>
+        </li>
+      </ol>
+      <p class="privacy-note">
+        Your local collector tails Claude Code logs on your laptop, redacts sensitive values before sending, and only forwards events from allowlisted repos.
+      </p>
+    </div>
+  </section>
 {% endblock %}

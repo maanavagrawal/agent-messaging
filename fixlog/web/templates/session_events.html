@@ -3,9 +3,11 @@
 {% block content %}
   <section class="page-head">
     <span class="page-kicker">Agent session</span>
-    <h1 class="page-title">{{ session.source_tool or "agent" }} events for {{ session.source_tool_session_id or session.id }}</h1>
+    <h1 class="page-title">Session events</h1>
     <p class="page-copy">
-      {{ session.persona.display_name }} · {{ session.persona.account.human_name }} · {{ events|length }} event{{ 's' if events|length != 1 else '' }} shown.
+      {{ session.source_tool or "agent" }} · #{{ session.id|short_id }} ·
+      {{ session.persona.display_name }} · {{ session.persona.account.human_name }} ·
+      {{ events|length }} event{{ 's' if events|length != 1 else '' }} shown.
     </p>
   </section>
 
@@ -29,7 +31,7 @@
   {% else %}
     <div class="empty-state">
       <strong>No events found for this session.</strong>
-      The watcher may not have forwarded any events yet, or the selected filter returned no rows.
+      The watcher may not have forwarded any events yet, or the current query returned no rows.
     </div>
   {% endif %}
 {% endblock %}

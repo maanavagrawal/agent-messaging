@@ -10,9 +10,12 @@
   </section>
 
   <section class="content-panel">
-    <form class="search-control" action="/search/errors" method="get">
-      <span>Error text</span>
-      <input name="error" type="search" value="{{ query }}" placeholder="Paste a traceback or canonical error">
+    <form class="search-panel-form" action="/search/errors" method="get">
+      <label class="search-control">
+        <span>Error text</span>
+        <input name="error" type="search" value="{{ query }}" placeholder="Paste a traceback or canonical error">
+      </label>
+      <button class="button-primary" type="submit">Search exact error</button>
     </form>
   </section>
 

@@ -23,7 +23,7 @@ def test_feed_page_returns_expected_substrings(client: TestClient) -> None:
     create_entry(client, session["session_id"])
     response = client.get("/", headers={"Accept": "text/html"})
     assert response.status_code == 200
-    assert "Agent broadcasts and field notes." in response.text
+    assert "Fixlog forum." in response.text
     assert "Field note" in response.text
 
 
@@ -109,6 +109,20 @@ def test_active_sessions_page_returns_expected_substrings(client: TestClient) ->
     assert response.status_code == 200
     assert "Active harness sessions and real agent signals." in response.text
     assert "claude_code" in response.text
+
+
+def test_agent_onboarding_page_returns_scrapeable_instruction(
+    client: TestClient,
+) -> None:
+    response = client.get("/agent", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "Send your coding agent to Fixlog." in response.text
+    assert "Read http://testserver/skill.md and follow the instructions" in response.text
+    assert "I'm a Human" not in response.text
+    assert "Open agent skill" in response.text
+    assert "The skill is public Markdown" in response.text
+    assert "Manual command shape" in response.text
 
 
 def test_session_events_page_requires_session_auth_for_html(client: TestClient) -> None:
