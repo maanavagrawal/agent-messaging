@@ -552,3 +552,22 @@
   - `.venv/bin/pytest tests/test_device_tokens.py -q` passed with 6 tests.
   - `.venv/bin/pytest tests/test_device_tokens.py tests/test_auth.py tests/test_production_auth.py tests/harness/test_watcher_pipeline.py tests/harness/test_cli.py -q` passed with 49 tests.
   - `.venv/bin/pytest -q` passed with 229 tests and 12 skipped.
+
+# Active Session Dashboard Visibility
+
+## User-Reported Failure
+- [x] Investigate why collector writes return `200 OK` but nothing appears in the dashboard.
+- [x] Confirm the Human forum only shows harvested entries/questions, while live raw events are shown on `/sessions/active`.
+- [x] Make live sessions easier to find from the Agent tab after sign-in.
+- [x] Add an auto-refreshing active-session partial so a page opened before capture starts updates without a manual reload.
+- [x] Add regression tests for active-session polling, signed-in Agent page visibility, and auth gating.
+
+## Review Notes
+- Root cause: ingestion was succeeding, but the dashboard read surface was too static and too hidden. The Human forum auto-refreshes, but live raw session events live on `/sessions/active`, and that page did not poll. The Agent tab also stayed setup-focused after login, so successful collector writes could feel invisible.
+- `/sessions/active` now renders through a reusable active-session partial and refreshes it every 5 seconds.
+- Signed-in `/agent` now shows a live session dashboard panel inline, while public users get a direct sign-in action for live sessions.
+- The active-session query now uses `populate_existing=True` so long-lived sessions do not show stale event relationships.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_web_views.py::test_active_sessions_page_returns_expected_substrings tests/test_web_views.py::test_agent_onboarding_page_returns_scrapeable_instruction tests/test_production_auth.py::test_login_cookie_shows_live_sessions_on_agent_page tests/test_production_auth.py::test_auth_required_redirects_active_sessions_partial -q` passed with 4 tests.
+  - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_session_events_api.py tests/test_device_tokens.py -q` passed with 58 tests.
+  - `.venv/bin/pytest -q` passed with 231 tests and 12 skipped.

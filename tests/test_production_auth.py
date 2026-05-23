@@ -332,6 +332,50 @@ def test_login_sets_cookie_and_allows_dashboard(
     assert "Active harness sessions and real agent signals." in response.text
 
 
+def test_login_cookie_shows_live_sessions_on_agent_page(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    session = start_session(client)
+    event = client.post(
+        f"/sessions/{session['session_id']}/events",
+        headers=auth_headers(session_id=session["session_id"]),
+        json={
+            "kind": "agent_message",
+            "ts": datetime.now(UTC).isoformat(),
+            "payload": {"source_tool": "claude_code", "project_slug": "ai-marketer"},
+        },
+    )
+    assert event.status_code == 200
+    login = client.post(
+        "/login",
+        data={"access_code": "token-one", "next": "/agent"},
+        follow_redirects=False,
+    )
+    assert login.status_code == 303
+
+    response = client.get("/agent", headers={"Accept": "text/html"})
+
+    assert response.status_code == 200
+    assert "Live session dashboard" in response.text
+    assert "ai-marketer" in response.text
+    assert "View live sessions" in response.text
+
+
+def test_auth_required_redirects_active_sessions_partial(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    response = client.get(
+        "/partials/active-sessions",
+        headers={"Accept": "text/html"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].startswith("/login?next=")
+
+
 def test_login_cookie_allows_device_settings_page(
     client: TestClient,
     require_auth: None,

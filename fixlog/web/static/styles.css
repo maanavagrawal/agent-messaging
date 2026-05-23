@@ -442,6 +442,18 @@ summary:focus-visible {
   font-size: 16px;
 }
 
+.section-heading-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.section-heading-row h2 {
+  margin: 0;
+}
+
 .page-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 292px;

@@ -254,6 +254,7 @@ def build_active_sessions(db: Session) -> list[ActiveSessionSummary]:
         .where(AgentSession.last_heartbeat >= active_cutoff)
         .order_by(AgentSession.last_heartbeat.desc())
         .limit(100)
+        .execution_options(populate_existing=True)
     ).all()
     summaries: list[ActiveSessionSummary] = []
     for session in sessions:

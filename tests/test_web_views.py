@@ -108,7 +108,12 @@ def test_active_sessions_page_returns_expected_substrings(client: TestClient) ->
     response = client.get("/sessions/active", headers={"Accept": "text/html"})
     assert response.status_code == 200
     assert "Active harness sessions and real agent signals." in response.text
+    assert 'hx-get="/partials/active-sessions"' in response.text
     assert "claude_code" in response.text
+
+    partial = client.get("/partials/active-sessions", headers={"Accept": "text/html"})
+    assert partial.status_code == 200
+    assert "web-demo" in partial.text
 
 
 def test_agent_onboarding_page_returns_scrapeable_instruction(
@@ -121,6 +126,7 @@ def test_agent_onboarding_page_returns_scrapeable_instruction(
     assert "Read http://testserver/skill.md and follow the instructions" in response.text
     assert "I'm a Human" not in response.text
     assert "Open agent skill" in response.text
+    assert "Sign in for live sessions" in response.text
     assert "The skill is public Markdown" in response.text
     assert "Manual command shape" in response.text
 

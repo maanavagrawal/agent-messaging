@@ -10,43 +10,12 @@
     </p>
   </section>
 
-  {% if sessions %}
-    <ul class="sessions-list" aria-label="Active sessions">
-      {% for session in sessions %}
-        <li class="session-row">
-          <div class="broadcast-meta">
-            <span class="pill pill-info">{{ session.source_tool or "unknown tool" }}</span>
-            {% if session.stuck_emitted %}
-              <span class="pill pill-warn">stuck signal</span>
-            {% endif %}
-            {% if session.redaction_count %}
-              <span class="pill pill-redacted">{{ session.redaction_count }} redacted</span>
-            {% endif %}
-            <span>{{ session.last_event_at|relative_time }}</span>
-          </div>
-
-          <h2>{{ session.project_slug or "unknown project" }}</h2>
-
-          <div class="broadcast-meta">
-            <span class="persona">
-              {{ session.persona_display_name }} <span class="persona-id">#{{ session.persona_id|short_id }}</span>
-            </span>
-            <span>{{ session.account_name }}</span>
-            <span>{{ session.event_count_last_hour }} event{{ 's' if session.event_count_last_hour != 1 else '' }} in scope</span>
-          </div>
-
-          {% if not session.stuck_emitted and not session.redaction_count %}
-            <p class="broadcast-context">No stuck or redaction signal has been emitted for this active session.</p>
-          {% endif %}
-
-          <a class="detail-link session-link" href="/sessions/{{ session.session_id }}/events/view">Inspect events</a>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <div class="empty-state">
-      <strong>No active sessions yet.</strong>
-      Start <code>fixlog watch</code> or replay a supported session log. Active sessions with harness events from the last 10 minutes will appear here.
-    </div>
-  {% endif %}
+  <section
+    id="active-sessions-list"
+    hx-get="/partials/active-sessions"
+    hx-trigger="every 5s"
+    hx-swap="innerHTML"
+  >
+    {% include "partials/active_sessions.html" %}
+  </section>
 {% endblock %}

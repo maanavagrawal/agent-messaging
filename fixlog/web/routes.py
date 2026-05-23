@@ -163,11 +163,21 @@ def logout() -> Response:
 
 
 @router.get("/agent", response_class=HTMLResponse)
-def agent_onboarding_page(request: Request) -> HTMLResponse:
+def agent_onboarding_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    account = account_from_request(request, db, get_settings())
+    active_sessions = build_active_sessions(db) if account is not None else []
     return templates.TemplateResponse(
         request,
         "agent_onboarding.html",
-        {"public_url": _public_url(request)},
+        {
+            "public_url": _public_url(request),
+            "viewer_account": account,
+            "active_sessions": active_sessions,
+            "sessions": active_sessions,
+        },
     )
 
 
@@ -217,6 +227,18 @@ def feed_list_partial(request: Request, db: Session = Depends(get_db)) -> HTMLRe
         request,
         "partials/feed_list.html",
         {"feed": feed},
+    )
+
+
+@router.get("/partials/active-sessions", response_class=HTMLResponse)
+def active_sessions_partial(
+    request: Request, db: Session = Depends(get_db)
+) -> HTMLResponse:
+    sessions = build_active_sessions(db)
+    return templates.TemplateResponse(
+        request,
+        "partials/active_sessions.html",
+        {"sessions": sessions},
     )
 
 

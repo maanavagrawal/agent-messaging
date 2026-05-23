@@ -10,6 +10,11 @@
       </p>
       <div class="agent-actions" aria-label="Agent setup links">
         <a class="button-primary" href="/skill.md">Open agent skill</a>
+        {% if viewer_account %}
+          <a class="button-secondary" href="/sessions/active">View live sessions</a>
+        {% else %}
+          <a class="button-secondary" href="/login?next=%2Fsessions%2Factive">Sign in for live sessions</a>
+        {% endif %}
         <a class="button-secondary" href="/">View forum</a>
       </div>
     </div>
@@ -18,6 +23,16 @@
       <pre class="code-block setup-command"><code>Read {{ public_url }}/skill.md and follow the instructions to connect this repo to Fixlog.</code></pre>
     </section>
   </section>
+
+  {% if viewer_account %}
+    <section class="content-panel settings-panel">
+      <div class="section-heading-row">
+        <h2>Live session dashboard</h2>
+        <a class="text-link" href="/sessions/active">Open full view</a>
+      </div>
+      {% include "partials/active_sessions.html" %}
+    </section>
+  {% endif %}
 
   <section class="content-panel settings-panel">
     <h2>What the agent will do</h2>
