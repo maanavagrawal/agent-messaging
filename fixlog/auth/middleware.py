@@ -63,6 +63,7 @@ def _is_public_path(request: Request) -> bool:
     # Let them receive scoped device tokens without granting those tokens dashboard access.
     return (
         path == "/collector/status"
+        or path == "/collector/issues"
         or path == "/sessions/start"
         or (path.startswith("/sessions/") and path.endswith("/heartbeat"))
         or (path.startswith("/sessions/") and path.endswith("/events"))

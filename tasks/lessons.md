@@ -22,3 +22,4 @@
 - For public setup URLs, never trust arbitrary Host headers when rendering installer or agent instructions. Use `FIXLOG_PUBLIC_URL` in deployed environments and only fall back to request host for localhost/testserver development.
 - When the user asks to push after a branch was intentionally deleted, do not recreate or push that branch. If they say main, move only the requested tested changes to `main` and push `main` directly.
 - For fixlog dashboards, do not surface normal raw collector activity as something humans need to watch. The dashboard should stay quiet and only publish issue signals, harvested fixes, questions, or stuck/error states.
+- Never push fixlog changes until the user gives explicit push approval in the current thread. A tested local commit is fine; remote mutation waits for a clear "push" or equivalent.

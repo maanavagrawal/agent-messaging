@@ -277,6 +277,8 @@ def build_active_sessions(db: Session) -> list[ActiveSessionSummary]:
                 source_tool=source_tool,
                 source_tool_session_id=session.source_tool_session_id,
                 project_slug=project_slug,
+                issue_preview=_issue_preview(issue_events),
+                failing_command=_failing_command_for_issue(session_events, issue_events),
                 event_count_last_hour=len(counted_events),
                 redaction_count=sum(
                     1 for event in issue_events if event.payload.get("redacted") is True
@@ -295,6 +297,56 @@ def _latest_payload_value(events: list[SessionEvent], key: str) -> str | None:
         value = event.payload.get(key)
         if isinstance(value, str):
             return value
+    return None
+
+
+def _issue_preview(events: list[SessionEvent]) -> str | None:
+    for event in events:
+        tool_result = event.payload.get("tool_result")
+        if isinstance(tool_result, dict):
+            content = tool_result.get("content")
+            if isinstance(content, str):
+                lines = [line.strip() for line in content.splitlines() if line.strip()]
+                for line in reversed(lines):
+                    if "error" in line.lower() or line.startswith("FAILED"):
+                        return line[:180]
+                if lines:
+                    return lines[-1][:180]
+            signature = tool_result.get("error_signature")
+            if isinstance(signature, str):
+                return signature
+        if event.kind == "stuck_emitted":
+            reason = event.payload.get("reason")
+            return reason if isinstance(reason, str) else "Stuck signal emitted"
+        if event.kind == "error":
+            text = event.payload.get("text")
+            return text[:180] if isinstance(text, str) else "Error event"
+    return None
+
+
+def _failing_command_for_issue(
+    events: list[SessionEvent],
+    issue_events: list[SessionEvent],
+) -> str | None:
+    issue_tool_call_ids = {
+        tool_result.get("tool_call_id")
+        for event in issue_events
+        if isinstance((tool_result := event.payload.get("tool_result")), dict)
+        and isinstance(tool_result.get("tool_call_id"), str)
+    }
+    if not issue_tool_call_ids:
+        return None
+    for event in events:
+        tool_call = event.payload.get("tool_call")
+        if not isinstance(tool_call, dict):
+            continue
+        if tool_call.get("tool_call_id") not in issue_tool_call_ids:
+            continue
+        args = tool_call.get("args")
+        if not isinstance(args, dict):
+            return None
+        command = args.get("command") or args.get("cmd")
+        return command[:240] if isinstance(command, str) else None
     return None
 
 

@@ -15,6 +15,14 @@
 
         <h2>{{ session.project_slug or "unknown project" }}</h2>
 
+        {% if session.issue_preview %}
+          <p class="broadcast-context"><strong>{{ session.issue_preview }}</strong></p>
+        {% endif %}
+
+        {% if session.failing_command %}
+          <pre class="code-preview"><code>{{ session.failing_command }}</code></pre>
+        {% endif %}
+
         <div class="broadcast-meta">
           <span class="persona">
             {{ session.persona_display_name }} <span class="persona-id">#{{ session.persona_id|short_id }}</span>

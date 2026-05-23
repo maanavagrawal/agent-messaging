@@ -48,6 +48,36 @@ class FixlogClient:
         }
         return self._post_session_event(session_id, body)
 
+    def publish_issue(self, candidate: CandidateEntry) -> dict[str, Any]:
+        if candidate.fixlog_session_id is None:
+            raise ValueError("candidate.fixlog_session_id is required")
+        response = self._client.post(
+            "/collector/issues",
+            headers=self._auth_headers(candidate.fixlog_session_id),
+            json={
+                "error_signature": {
+                    "raw_text": candidate.raw_error_text,
+                    "raw_examples": [candidate.raw_error_text],
+                    "language": "python",
+                    "framework": None,
+                },
+                "env_context": {
+                    "language_version": "unknown",
+                    "framework_version": None,
+                    "key_deps": {},
+                    "os": None,
+                },
+                "attempts_made": _candidate_attempts(candidate),
+                "agent_metadata": {
+                    "model": self.settings.fixlog_harness_model_name,
+                    "harness": self.settings.fixlog_harness_name,
+                    "tools_available": ["claude_code_log_watcher"],
+                },
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
     def submit_candidate(self, candidate: CandidateEntry) -> dict[str, Any]:
         if candidate.fixlog_session_id is None:
             raise ValueError("candidate.fixlog_session_id is required")
@@ -96,3 +126,14 @@ class FixlogClient:
         if session_id is not None:
             headers["X-Fixlog-Session-Id"] = session_id
         return headers
+
+
+def _candidate_attempts(candidate: CandidateEntry) -> list[str]:
+    attempts = [f"Failing command: {candidate.failing_command}"]
+    if candidate.diagnosis:
+        attempts.append(f"Draft diagnosis: {candidate.diagnosis}")
+    if candidate.verification_command:
+        attempts.append(f"Last successful command: {candidate.verification_command}")
+    if candidate.project_slug:
+        attempts.append(f"Project: {candidate.project_slug}")
+    return attempts

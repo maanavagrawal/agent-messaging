@@ -589,3 +589,24 @@
 - Verification completed:
   - `.venv/bin/pytest tests/test_session_events_api.py tests/test_web_views.py tests/test_production_auth.py -q` passed with 53 tests.
   - `.venv/bin/pytest -q` passed with 232 tests and 12 skipped.
+
+# Harvested Issue Broadcast Publishing
+
+## User-Reported Failure
+- [x] Explain why a pending harvest was created locally but no Human-tab post appeared.
+- [x] Add a narrow collector-scoped issue publishing endpoint for device-token sessions.
+- [x] Publish an Open Broadcast to the Human tab when the harvester identifies an issue candidate.
+- [x] Keep full harvested field notes/manual entry submission gated until verification is stronger.
+- [x] Deduplicate issue broadcasts so retries or repeated harvests do not spam the feed.
+- [x] Improve issue context so the dashboard names the error/failing command, not only the session.
+
+## Review Notes
+- Investigation found `/Users/maanavagrawal/.fixlog/pending_harvests/8c2986e6c9fd42168a29e07ca5e13d20.json`: the harvester identified the `ai-marketer` issue as a missing `re` import for `_HEX_COLOR_RE`, with a failing import command and a local fix diff. It stayed local because `auto_submit_harvests` is intentionally off by default, and device tokens cannot call the general `/entries` or `/questions` account APIs.
+- Added `POST /collector/issues`, a device-token scoped endpoint that creates an Open Broadcast/Question for the authenticated collector session without granting access to the broader account APIs.
+- The local watcher now publishes a collector issue whenever the harvester produces a candidate, even while full field-note auto-submit stays off.
+- The issue endpoint deduplicates by session and normalized error signature to avoid repeated retry spam.
+- Agent issue summaries now include a best-effort issue preview and the matching failing command when the server can derive them from session events.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_collector_issues.py tests/test_session_events_api.py tests/test_production_auth.py::test_auth_required_allows_device_token_issue_publish tests/harness/test_watcher_pipeline.py -q` passed with 18 tests.
+  - `.venv/bin/pytest tests/test_collector_issues.py tests/test_device_tokens.py tests/test_session_events_api.py tests/test_web_views.py tests/test_production_auth.py tests/harness/test_watcher_pipeline.py tests/harness/test_cli.py -q` passed with 76 tests.
+  - `.venv/bin/pytest -q` passed with 236 tests and 12 skipped.

@@ -494,3 +494,52 @@ def test_auth_required_allows_device_token_ingestion(
     )
 
     assert response.status_code == 200
+
+
+def test_auth_required_allows_device_token_issue_publish(
+    client: TestClient,
+    require_auth: None,
+) -> None:
+    created = client.post(
+        "/device-tokens",
+        headers=auth_headers(),
+        json={"name": "collector"},
+    )
+    assert created.status_code == 201
+    token = created.json()["token"]
+    session = client.post(
+        "/sessions/start",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"model_name": "claude-code", "harness_name": "fixlog-watch"},
+    )
+    assert session.status_code == 200
+
+    response = client.post(
+        "/collector/issues",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "X-Fixlog-Session-Id": session.json()["session_id"],
+        },
+        json={
+            "error_signature": {
+                "raw_text": "ValueError: hosted issue",
+                "raw_examples": ["ValueError: hosted issue"],
+                "language": "python",
+                "framework": None,
+            },
+            "env_context": {
+                "language_version": "unknown",
+                "framework_version": None,
+                "key_deps": {},
+                "os": None,
+            },
+            "attempts_made": ["Failing command: pytest"],
+            "agent_metadata": {
+                "model": "claude-code",
+                "harness": "fixlog-watch",
+                "tools_available": ["claude_code_log_watcher"],
+            },
+        },
+    )
+
+    assert response.status_code == 201

@@ -86,6 +86,24 @@ def test_list_session_events_rejects_missing_session_header_for_json(
 
 def test_active_sessions_returns_recent_aggregate(client: TestClient) -> None:
     session = start_session(client)
+    tool_call = client.post(
+        f"/sessions/{session['session_id']}/events",
+        headers=auth_headers(session_id=session["session_id"]),
+        json={
+            "kind": "tool_call",
+            "ts": datetime.now(UTC).isoformat(),
+            "payload": {
+                "source_tool": "claude_code",
+                "project_slug": "active-demo",
+                "tool_call": {
+                    "tool_name": "Bash",
+                    "args": {"command": "python -c 'from app import scraper'"},
+                    "tool_call_id": "toolu_1",
+                },
+            },
+        },
+    )
+    assert tool_call.status_code == 200
     for index, kind in enumerate(["tool_result", "stuck_emitted"]):
         response = client.post(
             f"/sessions/{session['session_id']}/events",
@@ -97,7 +115,9 @@ def test_active_sessions_returns_recent_aggregate(client: TestClient) -> None:
                     "source_tool": "claude_code",
                     "project_slug": "active-demo",
                     "tool_result": {
+                        "tool_call_id": "toolu_1",
                         "is_error": True,
+                        "content": "NameError: name 're' is not defined",
                         "error_signature": "Traceback: boom",
                     }
                     if index == 0
@@ -114,6 +134,8 @@ def test_active_sessions_returns_recent_aggregate(client: TestClient) -> None:
     assert item["event_count_last_hour"] == 2
     assert item["redaction_count"] == 0
     assert item["stuck_emitted"] is True
+    assert item["issue_preview"] == "NameError: name 're' is not defined"
+    assert item["failing_command"] == "python -c 'from app import scraper'"
 
 
 def test_active_sessions_hides_normal_collector_activity(

@@ -24,6 +24,7 @@ class FakeClient:
         self.started: list[NormalizedEvent] = []
         self.events: list[tuple[str, NormalizedEvent]] = []
         self.stuck: list[object] = []
+        self.published_issues: list[object] = []
         self.submitted: list[object] = []
 
     def start_session(self, event: NormalizedEvent) -> SessionMapping:
@@ -41,6 +42,10 @@ class FakeClient:
     def post_stuck_signal(self, session_id: str, signal: object) -> str:
         self.stuck.append((session_id, signal))
         return "stuck-event"
+
+    def publish_issue(self, candidate: object) -> dict[str, str]:
+        self.published_issues.append(candidate)
+        return {"id": "question"}
 
     def submit_candidate(self, candidate: object) -> dict[str, str]:
         self.submitted.append(candidate)
@@ -85,6 +90,12 @@ class AutoSubmitHarvester(FakeHarvester):
         )
 
 
+class PendingIssueHarvester(AutoSubmitHarvester):
+    def __init__(self) -> None:
+        super().__init__()
+        self.settings = type("Settings", (), {"auto_submit_harvests": False, "quiet_seconds": 1})()
+
+
 def test_replay_file_posts_redacted_events_and_session_end(tmp_path: Path) -> None:
     client = FakeClient()
     harvester = FakeHarvester()
@@ -117,7 +128,25 @@ def test_replay_file_auto_submits_when_enabled(tmp_path: Path) -> None:
     pipeline.replay_file(FIXTURES / "env_leak_redaction.jsonl", ClaudeCodeLogParser())
 
     assert harvester.calls
+    assert len(client.published_issues) == 1
     assert len(client.submitted) == 1
+
+
+def test_replay_file_publishes_issue_when_harvest_is_pending(tmp_path: Path) -> None:
+    client = FakeClient()
+    harvester = PendingIssueHarvester()
+    pipeline = HarnessPipeline(
+        client=client,
+        session_store=SessionMapStore(tmp_path / "map.json"),
+        detector=StuckDetector(),
+        harvester=harvester,
+    )
+
+    pipeline.replay_file(FIXTURES / "env_leak_redaction.jsonl", ClaudeCodeLogParser())
+
+    assert harvester.calls
+    assert len(client.published_issues) == 1
+    assert client.submitted == []
 
 
 def test_pipeline_drops_events_outside_allowed_projects(tmp_path: Path) -> None:

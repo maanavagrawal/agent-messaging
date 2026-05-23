@@ -30,6 +30,8 @@ class FixlogClientProtocol(Protocol):
 
     def post_stuck_signal(self, session_id: str, signal: StuckSignal) -> str: ...
 
+    def publish_issue(self, candidate: CandidateEntry) -> dict[str, object]: ...
+
     def submit_candidate(self, candidate: CandidateEntry) -> dict[str, object]: ...
 
 
@@ -153,8 +155,7 @@ class HarnessPipeline:
             candidate = self.harvester.harvest(
                 self.events_by_source.get(key, []), mapping.fixlog_session_id
             )
-            if candidate is not None and _auto_submit_enabled(self.harvester):
-                self.client.submit_candidate(candidate)
+            _publish_harvest_candidate(self.client, self.harvester, candidate)
             self.session_store.remove(end_event.source_tool, end_event.source_session_id)
 
     def _mapping_for(self, event: NormalizedEvent) -> SessionMapping:
@@ -256,8 +257,9 @@ def tail_file(path: Path, pipeline: HarnessPipeline) -> None:
                         pipeline.events_by_source.get(key, []),
                         mapping.fixlog_session_id,
                     )
-                    if candidate is not None and _auto_submit_enabled(pipeline.harvester):
-                        pipeline.client.submit_candidate(candidate)
+                    _publish_harvest_candidate(
+                        pipeline.client, pipeline.harvester, candidate
+                    )
                     pipeline.session_store.remove(
                         end_event.source_tool, end_event.source_session_id
                     )
@@ -317,6 +319,25 @@ def _process_event_from_tail(
 
 def _auto_submit_enabled(harvester: HarvesterProtocol) -> bool:
     return bool(getattr(harvester.settings, "auto_submit_harvests", False))
+
+
+def _publish_harvest_candidate(
+    client: FixlogClientProtocol,
+    harvester: HarvesterProtocol,
+    candidate: CandidateEntry | None,
+) -> None:
+    if candidate is None:
+        return
+    try:
+        client.publish_issue(candidate)
+    except Exception as exc:  # pragma: no cover - network failure path
+        logger.warning(
+            "failed to publish issue broadcast harvest_id=%s error=%s",
+            candidate.id,
+            exc,
+        )
+    if _auto_submit_enabled(harvester):
+        client.submit_candidate(candidate)
 
 
 def _quiet_seconds(harvester: HarvesterProtocol) -> int:

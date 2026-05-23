@@ -41,6 +41,8 @@ class ActiveSessionSummary(BaseModel):
     source_tool: str | None
     source_tool_session_id: str | None
     project_slug: str | None
+    issue_preview: str | None = None
+    failing_command: str | None = None
     event_count_last_hour: int
     redaction_count: int
     stuck_emitted: bool
