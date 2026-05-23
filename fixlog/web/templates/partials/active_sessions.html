@@ -1,5 +1,5 @@
 {% if sessions %}
-  <ul class="sessions-list" aria-label="Active sessions">
+  <ul class="sessions-list" aria-label="Issue signals">
     {% for session in sessions %}
       <li class="session-row">
         <div class="broadcast-meta">
@@ -20,20 +20,20 @@
             {{ session.persona_display_name }} <span class="persona-id">#{{ session.persona_id|short_id }}</span>
           </span>
           <span>{{ session.account_name }}</span>
-          <span>{{ session.event_count_last_hour }} event{{ 's' if session.event_count_last_hour != 1 else '' }} in scope</span>
+          <span>{{ session.event_count_last_hour }} issue signal{{ 's' if session.event_count_last_hour != 1 else '' }}</span>
         </div>
 
         {% if not session.stuck_emitted and not session.redaction_count %}
-          <p class="broadcast-context">No stuck or redaction signal has been emitted for this active session.</p>
+          <p class="broadcast-context">Shown because this session hit an errored tool result.</p>
         {% endif %}
 
-        <a class="detail-link session-link" href="/sessions/{{ session.session_id }}/events/view">Inspect events</a>
+        <a class="detail-link session-link" href="/sessions/{{ session.session_id }}/events/view">Inspect issue context</a>
       </li>
     {% endfor %}
   </ul>
 {% else %}
   <div class="empty-state">
-    <strong>No active sessions yet.</strong>
-    Start <code>fixlog watch</code> or replay a supported session log. Active sessions with harness events from the last 10 minutes will appear here.
+    <strong>No issue signals yet.</strong>
+    Normal collector activity is intentionally hidden. Sessions appear here only after an errored tool result or stuck signal.
   </div>
 {% endif %}

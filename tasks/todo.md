@@ -567,7 +567,25 @@
 - `/sessions/active` now renders through a reusable active-session partial and refreshes it every 5 seconds.
 - Signed-in `/agent` now shows a live session dashboard panel inline, while public users get a direct sign-in action for live sessions.
 - The active-session query now uses `populate_existing=True` so long-lived sessions do not show stale event relationships.
+- Superseded by the issue-only dashboard correction below: the dashboard should refresh issue signals, not normal successful collector activity.
 - Verification completed:
   - `.venv/bin/pytest tests/test_web_views.py::test_active_sessions_page_returns_expected_substrings tests/test_web_views.py::test_agent_onboarding_page_returns_scrapeable_instruction tests/test_production_auth.py::test_login_cookie_shows_live_sessions_on_agent_page tests/test_production_auth.py::test_auth_required_redirects_active_sessions_partial -q` passed with 4 tests.
   - `.venv/bin/pytest tests/test_web_views.py tests/test_production_auth.py tests/test_session_events_api.py tests/test_device_tokens.py -q` passed with 58 tests.
   - `.venv/bin/pytest -q` passed with 231 tests and 12 skipped.
+
+# Issue-Only Dashboard Signals
+
+## User Correction
+- [x] Stop making normal raw collector activity feel published to the dashboard.
+- [x] Keep the collector able to ingest events for issue detection and context.
+- [x] Show dashboard rows only when a session has an actual issue signal, such as an errored tool result or stuck signal.
+- [x] Update Agent/live-session copy so the product feels quiet unless something goes wrong.
+- [x] Add regression tests proving normal successful sessions stay hidden while issue sessions appear.
+
+## Review Notes
+- Dashboard summaries now filter to issue-bearing events only: errored tool results, error-signature tool results, explicit `error` events, or `stuck_emitted` events.
+- Normal successful capture can still be stored as private context for detection and later inspection, but it no longer creates dashboard rows or "live session" noise.
+- Copy now says "issue signals" instead of "live sessions" and the empty state explicitly says normal collector activity is intentionally hidden.
+- Verification completed:
+  - `.venv/bin/pytest tests/test_session_events_api.py tests/test_web_views.py tests/test_production_auth.py -q` passed with 53 tests.
+  - `.venv/bin/pytest -q` passed with 232 tests and 12 skipped.

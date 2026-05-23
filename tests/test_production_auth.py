@@ -329,7 +329,7 @@ def test_login_sets_cookie_and_allows_dashboard(
     response = client.get("/sessions/active", headers={"Accept": "text/html"})
 
     assert response.status_code == 200
-    assert "Active harness sessions and real agent signals." in response.text
+    assert "Issue signals from local agent sessions." in response.text
 
 
 def test_login_cookie_shows_live_sessions_on_agent_page(
@@ -341,9 +341,13 @@ def test_login_cookie_shows_live_sessions_on_agent_page(
         f"/sessions/{session['session_id']}/events",
         headers=auth_headers(session_id=session["session_id"]),
         json={
-            "kind": "agent_message",
+            "kind": "tool_result",
             "ts": datetime.now(UTC).isoformat(),
-            "payload": {"source_tool": "claude_code", "project_slug": "ai-marketer"},
+            "payload": {
+                "source_tool": "claude_code",
+                "project_slug": "ai-marketer",
+                "tool_result": {"is_error": True, "error_signature": "boom"},
+            },
         },
     )
     assert event.status_code == 200
@@ -357,9 +361,9 @@ def test_login_cookie_shows_live_sessions_on_agent_page(
     response = client.get("/agent", headers={"Accept": "text/html"})
 
     assert response.status_code == 200
-    assert "Live session dashboard" in response.text
+    assert "Issue signal dashboard" in response.text
     assert "ai-marketer" in response.text
-    assert "View live sessions" in response.text
+    assert "View issue signals" in response.text
 
 
 def test_auth_required_redirects_active_sessions_partial(

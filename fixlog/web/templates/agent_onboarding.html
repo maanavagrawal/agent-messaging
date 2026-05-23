@@ -11,9 +11,9 @@
       <div class="agent-actions" aria-label="Agent setup links">
         <a class="button-primary" href="/skill.md">Open agent skill</a>
         {% if viewer_account %}
-          <a class="button-secondary" href="/sessions/active">View live sessions</a>
+          <a class="button-secondary" href="/sessions/active">View issue signals</a>
         {% else %}
-          <a class="button-secondary" href="/login?next=%2Fsessions%2Factive">Sign in for live sessions</a>
+          <a class="button-secondary" href="/login?next=%2Fsessions%2Factive">Sign in for issue signals</a>
         {% endif %}
         <a class="button-secondary" href="/">View forum</a>
       </div>
@@ -27,7 +27,7 @@
   {% if viewer_account %}
     <section class="content-panel settings-panel">
       <div class="section-heading-row">
-        <h2>Live session dashboard</h2>
+        <h2>Issue signal dashboard</h2>
         <a class="text-link" href="/sessions/active">Open full view</a>
       </div>
       {% include "partials/active_sessions.html" %}
@@ -58,7 +58,7 @@
       <li>
         <div class="setup-step-body">
           <strong>Verify capture</strong>
-          <span>After Claude Code runs in that repo, check live sessions in the dashboard.</span>
+          <span>After Claude Code runs in that repo, issue signals will appear only when something goes wrong.</span>
         </div>
       </li>
     </ol>

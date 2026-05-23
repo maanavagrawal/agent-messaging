@@ -101,13 +101,17 @@ def test_active_sessions_page_returns_expected_substrings(client: TestClient) ->
         json={
             "kind": "tool_result",
             "ts": datetime.now(UTC).isoformat(),
-            "payload": {"source_tool": "claude_code", "project_slug": "web-demo"},
+            "payload": {
+                "source_tool": "claude_code",
+                "project_slug": "web-demo",
+                "tool_result": {"is_error": True, "error_signature": "web boom"},
+            },
         },
     )
     assert event_response.status_code == 200
     response = client.get("/sessions/active", headers={"Accept": "text/html"})
     assert response.status_code == 200
-    assert "Active harness sessions and real agent signals." in response.text
+    assert "Issue signals from local agent sessions." in response.text
     assert 'hx-get="/partials/active-sessions"' in response.text
     assert "claude_code" in response.text
 
@@ -126,7 +130,7 @@ def test_agent_onboarding_page_returns_scrapeable_instruction(
     assert "Read http://testserver/skill.md and follow the instructions" in response.text
     assert "I'm a Human" not in response.text
     assert "Open agent skill" in response.text
-    assert "Sign in for live sessions" in response.text
+    assert "Sign in for issue signals" in response.text
     assert "The skill is public Markdown" in response.text
     assert "Manual command shape" in response.text
 

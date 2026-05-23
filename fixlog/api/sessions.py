@@ -259,10 +259,11 @@ def build_active_sessions(db: Session) -> list[ActiveSessionSummary]:
     summaries: list[ActiveSessionSummary] = []
     for session in sessions:
         session_events = sorted(session.events, key=lambda item: item.ts, reverse=True)
-        if not session_events:
+        issue_events = [event for event in session_events if _event_has_issue(event)]
+        if not issue_events:
             continue
-        recent_events = [event for event in session_events if event.ts >= hour_cutoff]
-        counted_events = recent_events or session_events
+        recent_issue_events = [event for event in issue_events if event.ts >= hour_cutoff]
+        counted_events = recent_issue_events or issue_events
         project_slug = _latest_payload_value(session_events, "project_slug")
         source_tool = session.source_tool or _latest_payload_value(
             session_events, "source_tool"
@@ -278,10 +279,10 @@ def build_active_sessions(db: Session) -> list[ActiveSessionSummary]:
                 project_slug=project_slug,
                 event_count_last_hour=len(counted_events),
                 redaction_count=sum(
-                    1 for event in session_events if event.payload.get("redacted") is True
+                    1 for event in issue_events if event.payload.get("redacted") is True
                 ),
                 stuck_emitted=any(
-                    event.kind == "stuck_emitted" for event in session_events
+                    event.kind == "stuck_emitted" for event in issue_events
                 ),
                 last_event_at=session.last_heartbeat,
             )
@@ -295,3 +296,15 @@ def _latest_payload_value(events: list[SessionEvent], key: str) -> str | None:
         if isinstance(value, str):
             return value
     return None
+
+
+def _event_has_issue(event: SessionEvent) -> bool:
+    if event.kind in {"error", "stuck_emitted"}:
+        return True
+    tool_result = event.payload.get("tool_result")
+    if not isinstance(tool_result, dict):
+        return False
+    return (
+        tool_result.get("is_error") is True
+        or isinstance(tool_result.get("error_signature"), str)
+    )

@@ -96,7 +96,12 @@ def test_active_sessions_returns_recent_aggregate(client: TestClient) -> None:
                 "payload": {
                     "source_tool": "claude_code",
                     "project_slug": "active-demo",
-                    "redacted": index == 0,
+                    "tool_result": {
+                        "is_error": True,
+                        "error_signature": "Traceback: boom",
+                    }
+                    if index == 0
+                    else None,
                 },
             },
         )
@@ -107,5 +112,36 @@ def test_active_sessions_returns_recent_aggregate(client: TestClient) -> None:
     item = response.json()["items"][0]
     assert item["project_slug"] == "active-demo"
     assert item["event_count_last_hour"] == 2
-    assert item["redaction_count"] == 1
+    assert item["redaction_count"] == 0
     assert item["stuck_emitted"] is True
+
+
+def test_active_sessions_hides_normal_collector_activity(
+    client: TestClient,
+) -> None:
+    session = start_session(client)
+    for kind, payload in [
+        ("agent_message", {"text": "working normally", "project_slug": "quiet-demo"}),
+        (
+            "tool_result",
+            {
+                "project_slug": "quiet-demo",
+                "tool_result": {"is_error": False, "content": "ok"},
+            },
+        ),
+    ]:
+        response = client.post(
+            f"/sessions/{session['session_id']}/events",
+            headers=auth_headers(session_id=session["session_id"]),
+            json={
+                "kind": kind,
+                "ts": datetime.now(UTC).isoformat(),
+                "payload": payload,
+            },
+        )
+        assert response.status_code == 200
+
+    response = client.post("/sessions/active")
+
+    assert response.status_code == 200
+    assert response.json()["items"] == []

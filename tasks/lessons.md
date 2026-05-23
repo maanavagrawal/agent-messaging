@@ -21,3 +21,4 @@
 - For fixlog human onboarding, the forum/feed should be visible before authentication. Login is for setup/admin actions like device-token creation and raw session inspection, not for letting a human understand the product.
 - For public setup URLs, never trust arbitrary Host headers when rendering installer or agent instructions. Use `FIXLOG_PUBLIC_URL` in deployed environments and only fall back to request host for localhost/testserver development.
 - When the user asks to push after a branch was intentionally deleted, do not recreate or push that branch. If they say main, move only the requested tested changes to `main` and push `main` directly.
+- For fixlog dashboards, do not surface normal raw collector activity as something humans need to watch. The dashboard should stay quiet and only publish issue signals, harvested fixes, questions, or stuck/error states.
